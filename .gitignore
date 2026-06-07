@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.exe
+test-build
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Agent / tool artifacts
+.agent/
+.codegraph/
+.skills/
+.antigravity/
+.cursor/
+codegraph-tool/
+
+# Scratch docs (not part of the product)
+DEVELOPMENT.md
+FEATURES.md
+PROJECT_COMPLETE.md
+QUICKSTART.md
+VERIFICATION.md
+AGENTS.md
+PLAN.md
+index.md

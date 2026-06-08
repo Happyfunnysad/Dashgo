@@ -52,6 +52,7 @@ type Alias struct {
 type StatsResponse struct {
 	TotalContainers   int `json:"totalContainers"`
 	Running           int `json:"running"`
+	Stopped           int `json:"stopped"`
 	Healthy           int `json:"healthy"`
 	Starting          int `json:"starting"`
 	Unhealthy         int `json:"unhealthy"`

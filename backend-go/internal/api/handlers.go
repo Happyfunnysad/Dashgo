@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -128,7 +129,8 @@ func authMiddleware() gin.HandlerFunc {
 func getContainers(c *gin.Context) {
 	containers, err := docker.GetRunningContainers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] getContainers: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve containers"})
 		return
 	}
 	c.JSON(http.StatusOK, containers)
@@ -137,7 +139,8 @@ func getContainers(c *gin.Context) {
 func getStats(c *gin.Context) {
 	stats, err := docker.GetStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] getStats: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve stats"})
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -150,18 +153,19 @@ func getSettings(c *gin.Context) {
 func updateSettings(c *gin.Context) {
 	var settings models.Settings
 	if err := c.ShouldBindJSON(&settings); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid settings format"})
 		return
 	}
 	if settings.WebhookURL != "" {
 		if err := utils.ValidateWebhookURL(settings.WebhookURL); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid webhook URL"})
 			return
 		}
 	}
 	updated, err := db.UpdateSettings(settings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] updateSettings: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -179,13 +183,14 @@ func getAliases(c *gin.Context) {
 func upsertAlias(c *gin.Context) {
 	var alias models.Alias
 	if err := c.ShouldBindJSON(&alias); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 	alias.ContainerID = c.Param("containerId")
 	updated, err := db.UpsertAlias(alias)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] upsertAlias: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save alias"})
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -194,7 +199,8 @@ func upsertAlias(c *gin.Context) {
 func deleteAlias(c *gin.Context) {
 	err := db.DeleteAlias(c.Param("containerId"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] deleteAlias: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete alias"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
@@ -204,7 +210,8 @@ func getContainerStats(c *gin.Context) {
 	id := c.Param("id")
 	stats, err := docker.GetContainerStats(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] getContainerStats id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve container stats"})
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -214,7 +221,8 @@ func getContainerLogs(c *gin.Context) {
 	id := c.Param("id")
 	logs, err := docker.GetContainerLogs(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] getContainerLogs id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve container logs"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
@@ -224,7 +232,8 @@ func inspectContainer(c *gin.Context) {
 	id := c.Param("id")
 	details, err := docker.InspectContainer(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] inspectContainer id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to inspect container"})
 		return
 	}
 	c.JSON(http.StatusOK, details)
@@ -241,25 +250,24 @@ func deleteTailscaleDevice(c *gin.Context) {
 
 	req, err := http.NewRequest("DELETE", "https://api.tailscale.com/api/v2/device/"+url.PathEscape(deviceID), nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request: " + err.Error()})
+		log.Printf("[ERROR] deleteTailscaleDevice create request: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
 		return
 	}
 	req.SetBasicAuth(apiKey, "")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute request: " + err.Error()})
+		log.Printf("[ERROR] deleteTailscaleDevice execute request: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reach Tailscale API"})
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			c.JSON(resp.StatusCode, gin.H{"error": "Tailscale API returned error, and failed to read body"})
-			return
-		}
-		c.JSON(resp.StatusCode, gin.H{"error": "Tailscale API returned error: " + string(bodyBytes)})
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("[ERROR] deleteTailscaleDevice Tailscale API %d: %s", resp.StatusCode, string(bodyBytes))
+		c.JSON(resp.StatusCode, gin.H{"error": "Tailscale API returned an error"})
 		return
 	}
 
@@ -277,13 +285,15 @@ func getTailscaleStatus(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Tailscale not accessible: " + err.Error()})
+		log.Printf("[ERROR] getTailscaleStatus: %v", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Tailscale is not accessible"})
 		return
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(output, &result); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse tailscale output: " + err.Error()})
+		log.Printf("[ERROR] getTailscaleStatus parse: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse Tailscale status"})
 		return
 	}
 
@@ -295,7 +305,7 @@ func authTailscale(c *gin.Context) {
 		AuthKey string `json:"authKey" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Auth key is required"})
 		return
 	}
 
@@ -309,7 +319,8 @@ func authTailscale(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Tailscale error: " + string(output)})
+		log.Printf("[ERROR] authTailscale: %v, output: %s", err, string(output))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Tailscale authentication failed"})
 		return
 	}
 
@@ -319,7 +330,8 @@ func authTailscale(c *gin.Context) {
 func startContainer(c *gin.Context) {
 	id := c.Param("id")
 	if err := docker.StartContainer(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start container: " + err.Error()})
+		log.Printf("[ERROR] startContainer id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start container"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "started"})
@@ -328,7 +340,8 @@ func startContainer(c *gin.Context) {
 func stopContainer(c *gin.Context) {
 	id := c.Param("id")
 	if err := docker.StopContainer(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop container: " + err.Error()})
+		log.Printf("[ERROR] stopContainer id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop container"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "stopped"})
@@ -337,7 +350,8 @@ func stopContainer(c *gin.Context) {
 func restartContainer(c *gin.Context) {
 	id := c.Param("id")
 	if err := docker.RestartContainer(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to restart container: " + err.Error()})
+		log.Printf("[ERROR] restartContainer id=%s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to restart container"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "restarted"})
@@ -348,7 +362,8 @@ func restartContainer(c *gin.Context) {
 func getHardwareStats(c *gin.Context) {
 	stats, err := sys.GetHardwareStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get hardware stats: " + err.Error()})
+		log.Printf("[ERROR] getHardwareStats: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get hardware stats"})
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -361,7 +376,8 @@ func projectAction(action string) gin.HandlerFunc {
 		name := c.Param("name")
 		affected, err := docker.ProjectAction(name, action)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Printf("[ERROR] projectAction %s %s: %v", action, name, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to perform project action"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": action + "ed", "affected": affected})

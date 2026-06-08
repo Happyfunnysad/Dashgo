@@ -9,7 +9,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onLogout }) => {
   return (
-    <div className="w-64 bg-slate-900 border-r border-slate-700 p-6 flex flex-col">
+    <div className="hidden w-64 shrink-0 flex-col border-r border-slate-700 bg-slate-900 p-6 md:flex">
       <div className="flex items-center gap-3 mb-8 px-2">
         <div className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center shadow-inner">
           <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

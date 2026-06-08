@@ -259,7 +259,7 @@ func getTailscaleStatus(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "tailscale", "--socket=/tmp/tailscaled.sock", "status", "--json")
+	cmd := exec.CommandContext(ctx, "tailscale", "--socket=/run/tailscale/tailscaled.sock", "status", "--json")
 	output, err := cmd.Output()
 	if ctx.Err() == context.DeadlineExceeded {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Tailscale command timed out"})
@@ -291,7 +291,7 @@ func authTailscale(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "tailscale", "--socket=/tmp/tailscaled.sock", "up", "--reset", "--authkey", body.AuthKey)
+	cmd := exec.CommandContext(ctx, "tailscale", "--socket=/run/tailscale/tailscaled.sock", "up", "--reset", "--authkey", body.AuthKey)
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Tailscale auth timed out"})

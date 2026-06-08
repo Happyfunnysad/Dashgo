@@ -94,9 +94,11 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-900">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
-      {activeTab === 'dashboard' && <DashboardPage />}
-      {activeTab === 'settings' && <SettingsPage />}
-      {activeTab === 'tailscale' && <TailscalePageWithIcons />}
+      <main className="flex min-w-0 flex-1 pb-16 md:pb-0">
+        {activeTab === 'dashboard' && <DashboardPage />}
+        {activeTab === 'settings' && <SettingsPage />}
+        {activeTab === 'tailscale' && <TailscalePageWithIcons />}
+      </main>
     </div>
   );
 }

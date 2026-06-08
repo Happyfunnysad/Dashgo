@@ -23,5 +23,9 @@ RUN apk add --no-cache ca-certificates tzdata tailscale
 COPY --from=backend-builder /app/docker-dashboard .
 RUN mkdir -p /app/data
 
+LABEL org.opencontainers.image.source="https://github.com/Happyfunnysad/Dashgo"
+LABEL org.opencontainers.image.description="Lightweight Docker dashboard for SBCs and home servers"
+LABEL org.opencontainers.image.licenses="MIT"
+
 EXPOSE 8088
 CMD ["./docker-dashboard"]

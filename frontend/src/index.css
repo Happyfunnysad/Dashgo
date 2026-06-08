@@ -39,3 +39,146 @@
 .animate-slide-in {
   animation: slide-in-right 0.25s ease-out;
 }
+
+@keyframes slide-in-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Mobile layout: keep the existing TypeScript components and reshape them with CSS. */
+@media (max-width: 767px) {
+  /* Dashboard and Tailnet page gutters */
+  main > .flex-1.overflow-auto.bg-slate-900 > .p-8 {
+    padding: 1rem;
+  }
+
+  /* Dashboard view tabs and search */
+  .flex-wrap:has(> input[placeholder="Search..."]) {
+    align-items: stretch;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) > .flex {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) > .flex > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  input[placeholder="Search..."] {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  /* Dashboard table becomes a card list. */
+  .flex-wrap:has(> input[placeholder="Search..."]) + div {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div table,
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody,
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tr,
+  .flex-wrap:has(> input[placeholder="Search..."]) + div td {
+    display: block;
+    width: 100%;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div thead,
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tr.bg-slate-900\/20 {
+    display: none;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) {
+    overflow: hidden;
+    border: 1px solid rgb(51 65 85 / 0.6);
+    border-radius: 0.75rem;
+    background: rgb(30 41 59 / 0.7);
+    padding: 1rem;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td {
+    padding: 0;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td + td {
+    margin-top: 0.75rem;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:nth-child(n + 2)::before {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: rgb(100 116 139);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:nth-child(2)::before { content: 'State'; }
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:nth-child(3)::before { content: 'Endpoints'; }
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:nth-child(4)::before { content: 'Updates'; }
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:nth-child(5)::before { content: 'Actions'; }
+
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:last-child,
+  .flex-wrap:has(> input[placeholder="Search..."]) + div tbody > tr:not(.bg-slate-900\/20) > td:last-child > div {
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  /* DetailsDrawer becomes a bottom sheet. */
+  .animate-slide-in {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 85vh;
+    border-top: 1px solid rgb(51 65 85 / 0.7);
+    border-left: 0;
+    border-radius: 1rem 1rem 0 0;
+    animation-name: slide-in-up;
+  }
+
+  /* Settings: replace the fixed left section rail with a horizontal strip. */
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 {
+    flex-direction: column;
+  }
+
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 > .w-56 {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid rgb(30 41 59);
+    padding: 0.75rem;
+  }
+
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 > .w-56 h2 {
+    display: none;
+  }
+
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 > .w-56 nav {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 > .w-56 nav button {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  main > .flex-1.flex.overflow-hidden.bg-slate-900 > .flex-1.overflow-auto.p-8 {
+    padding: 1rem;
+  }
+}

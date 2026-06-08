@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardPage } from './pages/Dashboard';
 import { SettingsPage } from './pages/Settings';
-import { TailscalePage } from './pages/TailscalePage';
+import { TailscalePageWithIcons } from './pages/TailscalePageWithIcons';
 import { LoginPage } from './pages/LoginPage';
 import { authApi } from './utils/api';
 import { authStorage } from './utils/authStorage';
@@ -96,7 +96,7 @@ function App() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
       {activeTab === 'dashboard' && <DashboardPage />}
       {activeTab === 'settings' && <SettingsPage />}
-      {activeTab === 'tailscale' && <TailscalePage />}
+      {activeTab === 'tailscale' && <TailscalePageWithIcons />}
     </div>
   );
 }

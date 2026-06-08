@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +15,18 @@ import (
 
 var cli *client.Client
 
+// ErrDockerUnavailable is returned when the Docker client failed to initialize
+// (e.g. the daemon is not reachable), so handlers respond with a clear error
+// instead of panicking on a nil client.
+var ErrDockerUnavailable = errors.New("docker is not available (is the Docker daemon running and the socket mounted?)")
+
+func ensureClient() error {
+	if cli == nil {
+		return ErrDockerUnavailable
+	}
+	return nil
+}
+
 func InitClient() error {
 	var err error
 	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -21,6 +34,9 @@ func InitClient() error {
 }
 
 func GetRunningContainers() ([]models.ContainerInfo, error) {
+	if err := ensureClient(); err != nil {
+		return nil, err
+	}
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return nil, err
@@ -172,22 +188,34 @@ func GetStats() (models.StatsResponse, error) {
 }
 
 func StartContainer(id string) error {
+	if err := ensureClient(); err != nil {
+		return err
+	}
 	return cli.ContainerStart(context.Background(), id, container.StartOptions{})
 }
 
 func StopContainer(id string) error {
+	if err := ensureClient(); err != nil {
+		return err
+	}
 	// A timeout of 10 seconds is the default used by the CLI.
 	timeout := 10
 	return cli.ContainerStop(context.Background(), id, container.StopOptions{Timeout: &timeout})
 }
 
 func RestartContainer(id string) error {
+	if err := ensureClient(); err != nil {
+		return err
+	}
 	timeout := 10
 	return cli.ContainerRestart(context.Background(), id, container.StopOptions{Timeout: &timeout})
 }
 
 // ProjectAction performs start/stop/restart on all containers in a compose project.
 func ProjectAction(projectName string, action string) (int, error) {
+	if err := ensureClient(); err != nil {
+		return 0, err
+	}
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return 0, err

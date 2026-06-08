@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"docker-dashboard/internal/models"
 	"docker-dashboard/internal/sys"
 	"docker-dashboard/internal/updater"
+	"docker-dashboard/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,12 +88,15 @@ func RegisterRoutes(r *gin.Engine) {
 	}
 }
 
-// authMiddleware protects endpoints when a password is configured.
-// If no password is set, all requests pass through (first-run mode).
+// authMiddleware protects endpoints. Until a password is configured, all
+// protected endpoints are denied (the UI only needs the public /auth/* routes
+// for first-run setup). This prevents an unauthenticated window where the
+// Docker-controlling API is exposed before a password is set.
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !auth.IsConfigured() {
-			c.Next()
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Setup required: configure an admin password first"})
+			c.Abort()
 			return
 		}
 
@@ -147,6 +152,12 @@ func updateSettings(c *gin.Context) {
 	if err := c.ShouldBindJSON(&settings); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if settings.WebhookURL != "" {
+		if err := utils.ValidateWebhookURL(settings.WebhookURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 	updated, err := db.UpdateSettings(settings)
 	if err != nil {
@@ -386,16 +397,27 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 
+	clientKey := c.ClientIP()
+	if remaining := auth.LockRemaining(clientKey); remaining > 0 {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "Too many failed attempts. Try again in " + remaining.Round(time.Second).String(),
+		})
+		return
+	}
+
 	token, err := auth.Login(req.Password)
 	if err != nil {
 		status := http.StatusUnauthorized
 		if err == auth.ErrNotConfigured {
 			status = http.StatusPreconditionFailed
+		} else {
+			auth.RegisterFailedAttempt(clientKey)
 		}
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
+	auth.ResetAttempts(clientKey)
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
@@ -414,8 +436,8 @@ func setupPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.Password) < 4 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Password must be at least 4 characters"})
+	if len(req.Password) < auth.MinPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Password must be at least %d characters", auth.MinPasswordLength)})
 		return
 	}
 
@@ -452,8 +474,8 @@ func changePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.NewPassword) < 4 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be at least 4 characters"})
+	if len(req.NewPassword) < auth.MinPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("New password must be at least %d characters", auth.MinPasswordLength)})
 		return
 	}
 

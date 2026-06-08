@@ -1,9 +1,48 @@
 package utils
 
 import (
+	"fmt"
 	"net"
+	"net/url"
 	"strings"
 )
+
+// ValidateWebhookURL guards against SSRF: only http/https URLs that resolve to
+// public, routable addresses are allowed. Loopback, private, link-local and
+// unspecified addresses are rejected so an authenticated user cannot point the
+// webhook at internal services or cloud metadata endpoints.
+func ValidateWebhookURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid webhook URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("webhook URL must use http or https")
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("webhook URL is missing a host")
+	}
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve webhook host: %w", err)
+	}
+	for _, ip := range ips {
+		if !isPublicIP(ip) {
+			return fmt.Errorf("webhook host resolves to a non-routable address (%s)", ip)
+		}
+	}
+	return nil
+}
+
+func isPublicIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return false
+	}
+	return true
+}
 
 // GetLocalIP returns the first non-loopback local IPv4 address
 func GetLocalIP() string {

@@ -102,11 +102,9 @@ the API stays locked.
 
 ```yaml
 services:
-  docker-dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: docker-dashboard
+  dashgo:
+    image: ghcr.io/happyfunnysad/dashgo:latest
+    container_name: dashgo
     ports:
       - "8088:8088"
     volumes:

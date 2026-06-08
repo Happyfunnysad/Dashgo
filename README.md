@@ -102,11 +102,9 @@ the API stays locked.
 
 ```yaml
 services:
-  docker-dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: docker-dashboard
+  dashgo:
+    image: ghcr.io/happyfunnysad/dashgo:latest
+    container_name: dashgo
     ports:
       - "8088:8088"
     volumes:
@@ -116,9 +114,18 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
     environment:
+      - NODE_ENV=production
       - DOCKER_SOCKET=/var/run/docker.sock
       - DB_PATH=/app/data/config.json
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - docker-dashboard-net
 
   tailscale:
     image: tailscale/tailscale:latest
@@ -137,6 +144,12 @@ services:
       - net_admin
       - sys_module
     restart: unless-stopped
+    networks:
+      - docker-dashboard-net
+
+networks:
+  docker-dashboard-net:
+    driver: bridge
 
 volumes:
   tailscale_data:

@@ -34,7 +34,7 @@ Thumbs.db
 .skills/
 .antigravity/
 .cursor/
-codegraph-tool/
+.codegraph-tool/
 
 # Scratch docs (not part of the product)
 DEVELOPMENT.md
@@ -45,3 +45,4 @@ VERIFICATION.md
 AGENTS.md
 PLAN.md
 index.md
+codegraph-tool/

@@ -46,17 +46,33 @@ func main() {
 
 	r := gin.Default()
 
-	// CORS Middleware
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tailscale-Api-Key")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
+	// Trust only explicitly configured proxies.
+	// Default: trust no proxy (prevents X-Forwarded-For spoofing for brute-force bypass).
+	// Set TRUSTED_PROXIES=<cidr1,cidr2,...> in env to override.
+	trustedProxies := os.Getenv("TRUSTED_PROXIES")
+	if trustedProxies != "" {
+		if err := r.SetTrustedProxies(strings.Split(trustedProxies, ",")); err != nil {
+			log.Fatalf("Invalid TRUSTED_PROXIES value: %v", err)
 		}
-		c.Next()
-	})
+	} else {
+		_ = r.SetTrustedProxies(nil) // no proxy trusted by default
+	}
+
+	// CORS: only enable if an explicit allow-origin is configured.
+	// The embedded frontend is same-origin so wildcard CORS is not needed and
+	// would unnecessarily expose the Authorization header to any origin.
+	if corsOrigin := os.Getenv("CORS_ORIGIN"); corsOrigin != "" {
+		r.Use(func(c *gin.Context) {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", corsOrigin)
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tailscale-Api-Key")
+			if c.Request.Method == "OPTIONS" {
+				c.AbortWithStatus(204)
+				return
+			}
+			c.Next()
+		})
+	}
 
 	// Register API routes
 	api.RegisterRoutes(r)

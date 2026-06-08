@@ -103,8 +103,8 @@ func checkAllUpdates() {
 		// Use a short timeout per image
 		pullCtx, pullCancel := context.WithTimeout(ctx, 30*time.Second)
 		reader, err := cli.ImagePull(pullCtx, imgName, image.PullOptions{})
-		pullCancel()
 		if err != nil {
+			pullCancel()
 			// Can't reach registry or private image — skip
 			newStatuses = append(newStatuses, status)
 			continue
@@ -118,6 +118,7 @@ func checkAllUpdates() {
 			}
 		}
 		reader.Close()
+		pullCancel()
 
 		// Re-inspect the image after pull
 		remoteInspect, _, err := cli.ImageInspectWithRaw(ctx, imgName)

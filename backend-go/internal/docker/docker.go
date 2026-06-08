@@ -167,10 +167,14 @@ func GetStats() (models.StatsResponse, error) {
 
 	stats := models.StatsResponse{
 		TotalContainers: len(containers),
-		Running:         len(containers),
 	}
 
 	for _, c := range containers {
+		if c.Status == "running" {
+			stats.Running++
+		} else {
+			stats.Stopped++
+		}
 		switch c.Health {
 		case "healthy":
 			stats.Healthy++

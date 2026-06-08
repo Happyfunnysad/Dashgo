@@ -29,6 +29,65 @@ var (
 	sessionTTL   = 24 * time.Hour
 )
 
+// MinPasswordLength is the minimum allowed admin password length.
+const MinPasswordLength = 8
+
+// Brute-force protection: lock a key (e.g. client IP) after too many failed
+// login attempts within the lockout window.
+const (
+	maxFailedAttempts = 5
+	lockoutDuration   = 15 * time.Minute
+)
+
+type attemptRecord struct {
+	failures  int
+	lockUntil time.Time
+}
+
+var (
+	attemptsMu sync.Mutex
+	attempts   = make(map[string]*attemptRecord)
+)
+
+// LockRemaining returns how long the given key is locked out for, or 0 if not
+// locked.
+func LockRemaining(key string) time.Duration {
+	attemptsMu.Lock()
+	defer attemptsMu.Unlock()
+	rec, ok := attempts[key]
+	if !ok {
+		return 0
+	}
+	if remaining := time.Until(rec.lockUntil); remaining > 0 {
+		return remaining
+	}
+	return 0
+}
+
+// RegisterFailedAttempt records a failed login for the key and locks it once
+// the threshold is reached.
+func RegisterFailedAttempt(key string) {
+	attemptsMu.Lock()
+	defer attemptsMu.Unlock()
+	rec, ok := attempts[key]
+	if !ok {
+		rec = &attemptRecord{}
+		attempts[key] = rec
+	}
+	rec.failures++
+	if rec.failures >= maxFailedAttempts {
+		rec.lockUntil = time.Now().Add(lockoutDuration)
+		rec.failures = 0
+	}
+}
+
+// ResetAttempts clears the failure record for a key after a successful login.
+func ResetAttempts(key string) {
+	attemptsMu.Lock()
+	defer attemptsMu.Unlock()
+	delete(attempts, key)
+}
+
 // SetPasswordHash loads the bcrypt hash from config on startup.
 func SetPasswordHash(hash string) {
 	mu.Lock()

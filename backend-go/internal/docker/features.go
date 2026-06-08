@@ -9,16 +9,25 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"docker-dashboard/internal/db"
 	"docker-dashboard/internal/models"
+	"docker-dashboard/internal/utils"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
+// webhookClient sends event notifications with a bounded timeout so an
+// unreachable or slow endpoint cannot hang the event listener goroutine.
+var webhookClient = &http.Client{Timeout: 10 * time.Second}
+
 func GetContainerStats(id string) (*models.ContainerMetrics, error) {
+	if err := ensureClient(); err != nil {
+		return nil, err
+	}
 	stats, err := cli.ContainerStatsOneShot(context.Background(), id)
 	if err != nil {
 		return nil, err
@@ -71,6 +80,9 @@ func GetContainerStats(id string) (*models.ContainerMetrics, error) {
 }
 
 func GetContainerLogs(id string) (string, error) {
+	if err := ensureClient(); err != nil {
+		return "", err
+	}
 	c, err := cli.ContainerInspect(context.Background(), id)
 	if err != nil {
 		return "", err
@@ -96,7 +108,30 @@ func GetContainerLogs(id string) (string, error) {
 	return buf.String(), nil
 }
 
+// sensitiveEnvPatterns are substrings that, when found in an env var key,
+// mark its value as secret and worthy of redaction in the inspect view.
+var sensitiveEnvPatterns = []string{
+	"password", "passwd", "pwd",
+	"secret", "token", "apikey", "api_key",
+	"key", "credential", "auth",
+	"private", "access_key", "session",
+	"dsn", "database_url", "conn",
+}
+
+func isSensitiveEnvKey(key string) bool {
+	k := strings.ToLower(key)
+	for _, p := range sensitiveEnvPatterns {
+		if strings.Contains(k, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func InspectContainer(id string) (*models.ContainerDetails, error) {
+	if err := ensureClient(); err != nil {
+		return nil, err
+	}
 	c, err := cli.ContainerInspect(context.Background(), id)
 	if err != nil {
 		return nil, err
@@ -109,11 +144,9 @@ func InspectContainer(id string) (*models.ContainerDetails, error) {
 	}
 
 	for i, e := range details.Env {
-		if strings.Contains(strings.ToLower(e), "password") || strings.Contains(strings.ToLower(e), "secret") || strings.Contains(strings.ToLower(e), "token") {
-			parts := strings.SplitN(e, "=", 2)
-			if len(parts) == 2 {
-				details.Env[i] = parts[0] + "=********"
-			}
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 && isSensitiveEnvKey(parts[0]) {
+			details.Env[i] = parts[0] + "=********"
 		}
 	}
 
@@ -148,12 +181,21 @@ func StartEventListener() {
 				if msg.Type == "container" && (msg.Action == "die" || msg.Action == "health_status: unhealthy") {
 					settings := db.GetSettings()
 					if settings.WebhookURL != "" {
+						if err := utils.ValidateWebhookURL(settings.WebhookURL); err != nil {
+							log.Printf("Skipping webhook: %v", err)
+							continue
+						}
 						name := msg.Actor.Attributes["name"]
 						payload := map[string]string{
 							"text": fmt.Sprintf("⚠️ Docker Alert: Container **%s** status changed to `%s`", name, msg.Action),
 						}
 						payloadBytes, _ := json.Marshal(payload)
-						http.Post(settings.WebhookURL, "application/json", bytes.NewBuffer(payloadBytes))
+						resp, err := webhookClient.Post(settings.WebhookURL, "application/json", bytes.NewBuffer(payloadBytes))
+						if err != nil {
+							log.Printf("Webhook POST failed: %v", err)
+							continue
+						}
+						resp.Body.Close()
 					}
 				}
 			}

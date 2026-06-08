@@ -55,12 +55,39 @@ func InitDB(path string) error {
 	return saveConfig()
 }
 
+// saveConfig writes the config atomically (write to a temp file in the same
+// directory, then rename) with 0600 perms so the bcrypt password hash is not
+// world-readable and a crash mid-write cannot corrupt the existing config.
 func saveConfig() error {
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(configPath, data, 0644)
+
+	dir := filepath.Dir(configPath)
+	tmp, err := ioutil.TempFile(dir, ".config-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, configPath)
 }
 
 func GetSettings() models.Settings {

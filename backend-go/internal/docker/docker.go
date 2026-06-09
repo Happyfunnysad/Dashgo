@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"docker-dashboard/internal/db"
 	"docker-dashboard/internal/models"
@@ -33,11 +34,19 @@ func InitClient() error {
 	return err
 }
 
+// withTimeout wraps parent with a deadline. Use this for every Docker SDK call
+// so a hung daemon cannot block handler goroutines indefinitely.
+func withTimeout(parent context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, d)
+}
+
 func GetRunningContainers() ([]models.ContainerInfo, error) {
 	if err := ensureClient(); err != nil {
 		return nil, err
 	}
-	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
+	ctx, cancel := withTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
@@ -195,24 +204,30 @@ func StartContainer(id string) error {
 	if err := ensureClient(); err != nil {
 		return err
 	}
-	return cli.ContainerStart(context.Background(), id, container.StartOptions{})
+	ctx, cancel := withTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return cli.ContainerStart(ctx, id, container.StartOptions{})
 }
 
 func StopContainer(id string) error {
 	if err := ensureClient(); err != nil {
 		return err
 	}
+	ctx, cancel := withTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	// A timeout of 10 seconds is the default used by the CLI.
 	timeout := 10
-	return cli.ContainerStop(context.Background(), id, container.StopOptions{Timeout: &timeout})
+	return cli.ContainerStop(ctx, id, container.StopOptions{Timeout: &timeout})
 }
 
 func RestartContainer(id string) error {
 	if err := ensureClient(); err != nil {
 		return err
 	}
+	ctx, cancel := withTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	timeout := 10
-	return cli.ContainerRestart(context.Background(), id, container.StopOptions{Timeout: &timeout})
+	return cli.ContainerRestart(ctx, id, container.StopOptions{Timeout: &timeout})
 }
 
 // ProjectAction performs start/stop/restart on all containers in a compose project.
@@ -220,7 +235,9 @@ func ProjectAction(projectName string, action string) (int, error) {
 	if err := ensureClient(); err != nil {
 		return 0, err
 	}
-	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
+	listCtx, listCancel := withTimeout(context.Background(), 10*time.Second)
+	defer listCancel()
+	containers, err := cli.ContainerList(listCtx, container.ListOptions{All: true})
 	if err != nil {
 		return 0, err
 	}
@@ -231,15 +248,17 @@ func ProjectAction(projectName string, action string) (int, error) {
 		if c.Labels["com.docker.compose.project"] != projectName {
 			continue
 		}
+		actCtx, actCancel := withTimeout(context.Background(), 30*time.Second)
 		var actionErr error
 		switch action {
 		case "start":
-			actionErr = cli.ContainerStart(context.Background(), c.ID, container.StartOptions{})
+			actionErr = cli.ContainerStart(actCtx, c.ID, container.StartOptions{})
 		case "stop":
-			actionErr = cli.ContainerStop(context.Background(), c.ID, container.StopOptions{Timeout: &timeout})
+			actionErr = cli.ContainerStop(actCtx, c.ID, container.StopOptions{Timeout: &timeout})
 		case "restart":
-			actionErr = cli.ContainerRestart(context.Background(), c.ID, container.StopOptions{Timeout: &timeout})
+			actionErr = cli.ContainerRestart(actCtx, c.ID, container.StopOptions{Timeout: &timeout})
 		}
+		actCancel()
 		if actionErr != nil {
 			return affected, fmt.Errorf("failed to %s container %s: %w", action, c.ID[:12], actionErr)
 		}
@@ -252,4 +271,3 @@ func ProjectAction(projectName string, action string) (int, error) {
 func GetDockerClient() *client.Client {
 	return cli
 }
-

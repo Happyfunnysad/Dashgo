@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { containerApi, Settings } from '../utils/api';
 import { authApi } from '../utils/api';
 import { authStorage } from '../utils/authStorage';
+import { TailscaleDevicePickerModal } from '../components/tailscale/TailscaleDevicePickerModal';
 
 type SettingsSection = 'general' | 'network' | 'tailscale' | 'notifications' | 'security' | 'advanced';
 
@@ -42,19 +43,32 @@ const InputField: React.FC<{
   error?: string;
   min?: number;
   max?: number;
-}> = ({ label, name, value, onChange, placeholder, type = 'text', description, mono, disabled, error, min, max }) => (
+  action?: { label: string; onClick: () => void; loading?: boolean };
+}> = ({ label, name, value, onChange, placeholder, type = 'text', description, mono, disabled, error, min, max, action }) => (
   <Field label={label} description={description} error={error}>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      disabled={disabled}
-      min={min}
-      max={max}
-      className={`w-full px-4 py-2.5 bg-slate-900/50 text-slate-100 rounded-lg border ${error ? 'border-red-500/50' : 'border-slate-700'} focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all disabled:opacity-50 ${mono ? 'font-mono text-sm' : ''}`}
-    />
+    <div className="relative">
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        min={min}
+        max={max}
+        className={`w-full px-4 py-2.5 bg-slate-900/50 text-slate-100 rounded-lg border ${error ? 'border-red-500/50' : 'border-slate-700'} focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all disabled:opacity-50 ${mono ? 'font-mono text-sm' : ''} ${action ? 'pr-28' : ''}`}
+      />
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          disabled={action.loading || disabled}
+          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors disabled:opacity-50"
+        >
+          {action.loading ? 'Detecting...' : action.label}
+        </button>
+      )}
+    </div>
   </Field>
 );
 
@@ -95,6 +109,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [authConfigured, setAuthConfigured] = useState(false);
+  
+  const [detectingLocal, setDetectingLocal] = useState(false);
+  const [showDevicePicker, setShowDevicePicker] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -157,6 +174,30 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
     } finally {
       setWebhookTesting(false);
     }
+  };
+
+  const handleAutoDetectLocal = () => {
+    setDetectingLocal(true);
+    setTimeout(() => {
+      const host = window.location.hostname;
+      if (host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('100.')) {
+        setSettings(prev => ({ ...prev, localNetworkIp: host }));
+        setMessage({ type: 'success', text: 'Local IP detected from current connection' });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage({ type: 'error', text: 'Could not auto-detect local IP from current URL. Please enter manually.' });
+        setTimeout(() => setMessage(null), 3000);
+      }
+      setDetectingLocal(false);
+    }, 400);
+  };
+
+  const handleAutoDetectTailscaleIp = () => {
+    setShowDevicePicker(true);
+  };
+
+  const handleAutoDetectTailscaleHost = () => {
+    setShowDevicePicker(true);
   };
 
   const handleChangePassword = async () => {
@@ -261,8 +302,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
               value={settings.localNetworkIp}
               onChange={handleChange}
               placeholder="e.g., 192.168.1.20"
-              description="Auto-detected if empty. Used for LAN access links."
+              description="Used for LAN access links."
               mono
+              action={{
+                label: 'Auto-detect',
+                onClick: handleAutoDetectLocal,
+                loading: detectingLocal
+              }}
             />
             <InputField
               label="Domain Name"
@@ -292,17 +338,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
               value={settings.tailscaleIp}
               onChange={handleChange}
               placeholder="e.g., 100.90.80.70"
-              description="Auto-detected if empty. Used for Tailnet access links."
+              description="Used for Tailnet access links."
               mono
+              action={{
+                label: 'Select Device',
+                onClick: handleAutoDetectTailscaleIp
+              }}
             />
             <InputField
               label="MagicDNS Hostname"
               name="tailscaleHostname"
               value={settings.tailscaleHostname}
               onChange={handleChange}
-              placeholder="e.g., home-server.tailnet-name.ts.net"
-              description="The MagicDNS name for this device"
+              placeholder="e.g., dashgo.tailnet-name.ts.net"
+              description="Alternative to IP for Tailnet links."
               mono
+              action={{
+                label: 'Select Device',
+                onClick: handleAutoDetectTailscaleHost
+              }}
             />
           </SectionCard>
 
@@ -483,6 +537,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {showDevicePicker && (
+        <TailscaleDevicePickerModal
+          onClose={() => setShowDevicePicker(false)}
+          onSelect={(ip, hostname) => {
+            setSettings(prev => ({ ...prev, tailscaleIp: ip, tailscaleHostname: hostname }));
+            setShowDevicePicker(false);
+            setMessage({ type: 'success', text: 'Tailscale device selected successfully' });
+            setTimeout(() => setMessage(null), 3000);
+          }}
+        />
       )}
     </div>
   );

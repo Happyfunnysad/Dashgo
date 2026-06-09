@@ -28,7 +28,9 @@ func GetContainerStats(id string) (*models.ContainerMetrics, error) {
 	if err := ensureClient(); err != nil {
 		return nil, err
 	}
-	stats, err := cli.ContainerStatsOneShot(context.Background(), id)
+	ctx, cancel := withTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	stats, err := cli.ContainerStatsOneShot(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +85,17 @@ func GetContainerLogs(id string) (string, error) {
 	if err := ensureClient(); err != nil {
 		return "", err
 	}
-	c, err := cli.ContainerInspect(context.Background(), id)
+	inspectCtx, inspectCancel := withTimeout(context.Background(), 10*time.Second)
+	c, err := cli.ContainerInspect(inspectCtx, id)
+	inspectCancel()
 	if err != nil {
 		return "", err
 	}
 
+	logsCtx, logsCancel := withTimeout(context.Background(), 30*time.Second)
+	defer logsCancel()
 	options := container.LogsOptions{ShowStdout: true, ShowStderr: true, Tail: "500"}
-	out, err := cli.ContainerLogs(context.Background(), id, options)
+	out, err := cli.ContainerLogs(logsCtx, id, options)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +138,9 @@ func InspectContainer(id string) (*models.ContainerDetails, error) {
 	if err := ensureClient(); err != nil {
 		return nil, err
 	}
-	c, err := cli.ContainerInspect(context.Background(), id)
+	ctx, cancel := withTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c, err := cli.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, err
 	}

@@ -51,11 +51,12 @@ the API stays locked.
 
 ## Features
 
+- **Onboarding Wizard** — guided first-time setup for password, Tailscale auth, and network settings
 - **Dashboard** — real-time container monitoring with host metrics (CPU, RAM, disk, temperature)
 - **Compose stacks** — containers grouped by project; start/stop/restart an entire stack at once
 - **Details drawer** — click any container for ports, resource usage, live logs, inspect, and access links
-- **Native Tailnet** — built-in Tailscale: device list, online status, MagicDNS, and services published over your tailnet
-- **Access links** — auto-generated Local / Tailscale / Domain links for every published port
+- **Native Tailnet** — built-in Tailscale: device picker, online status, MagicDNS, and services published over your tailnet
+- **Access links** — auto-generated Local / Tailscale / Domain links with smart IP auto-detection
 - **Image updates** — checks the registry for newer images and flags outdated containers
 - **Hardware monitoring** — CPU, memory, disk and temperature gauges (great for Orange Pi / Raspberry Pi)
 - **Authentication** — password-protected UI with bcrypt, session tokens, and per-IP brute-force lockout

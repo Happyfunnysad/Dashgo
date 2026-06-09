@@ -1,3 +1,19 @@
+# Dashgo v0.1.3 - Build Hotfix
+
+- **Bugfix:** Resolved a TypeScript compilation error in `Settings.test.tsx` that caused the GitHub Actions Docker build to fail with `exit code: 2`.
+
+---
+
+# Dashgo v0.1.2 - Onboarding & Network UX
+
+- **Feature:** Added an **Onboarding Wizard** for first-time setup. Users are guided through setting up the Admin password, connecting to Tailscale (with a skip option), and configuring Network Settings.
+- **Feature:** **Auto-detect Local Network IP**. The dashboard smartly infers the local IP address from the browser connection (`window.location.hostname`).
+- **Feature:** **Tailscale Device Picker**. Replaced manual typing for Tailscale IP/Hostname with a dynamic `TailscaleDevicePickerModal` that scans the Tailnet and shows online peers.
+- **Testing:** Introduced **Vitest** and **React Testing Library** for the frontend. Added comprehensive unit tests for the Onboarding Wizard, Tailscale Device Picker, and Settings.
+- **Refactor:** Cleaned up `LoginPage` logic and shifted first-run setup logic entirely to the new Wizard flow.
+
+---
+
 # Dashgo v0.1.1 - Performance & Stability Release
 
 This release addresses critical performance issues, metrics calculation inaccuracies, and stability on the backend:

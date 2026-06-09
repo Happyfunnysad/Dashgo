@@ -3,13 +3,11 @@ import { authApi } from '../utils/api';
 import { authStorage } from '../utils/authStorage';
 
 interface LoginPageProps {
-  isSetup: boolean;
   onAuthenticated: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onAuthenticated }) => {
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -19,23 +17,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }
     setLoading(true);
 
     try {
-      if (isSetup) {
-        if (password !== confirmPassword) {
-          setError('Passwords do not match');
-          setLoading(false);
-          return;
-        }
-        if (password.length < 8) {
-          setError('Password must be at least 8 characters');
-          setLoading(false);
-          return;
-        }
-        const res = await authApi.setup(password);
-        authStorage.setToken(res.data.token);
-      } else {
-        const res = await authApi.login(password);
-        authStorage.setToken(res.data.token);
-      }
+      const res = await authApi.login(password);
+      authStorage.setToken(res.data.token);
       onAuthenticated();
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Authentication failed';
@@ -57,7 +40,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }
           </div>
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashgo</h1>
           <p className="text-slate-400 text-sm mt-1">
-            {isSetup ? 'Set up your admin password' : 'Enter your password to continue'}
+            Enter your password to continue
           </p>
         </div>
 
@@ -66,7 +49,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }
           <div className="space-y-4">
             <div>
               <label htmlFor="password" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                {isSetup ? 'New Password' : 'Password'}
+                Password
               </label>
               <input
                 id="password"
@@ -79,23 +62,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }
                 className="w-full px-4 py-3 bg-slate-900/50 text-slate-100 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all placeholder:text-slate-600"
               />
             </div>
-
-            {isSetup && (
-              <div>
-                <label htmlFor="confirm-password" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full px-4 py-3 bg-slate-900/50 text-slate-100 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all placeholder:text-slate-600"
-                />
-              </div>
-            )}
 
             {error && (
               <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
@@ -111,21 +77,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ isSetup, onAuthenticated }
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" /></svg>
-                  {isSetup ? 'Setting up...' : 'Signing in...'}
+                  Signing in...
                 </span>
               ) : (
-                isSetup ? 'Set Password' : 'Sign In'
+                'Sign In'
               )}
             </button>
           </div>
         </form>
-
-        {isSetup && (
-          <p className="text-center text-xs text-slate-500 mt-4">
-            This password protects access to Docker management.
-            <br />Store it securely — there is no recovery option.
-          </p>
-        )}
       </div>
     </div>
   );

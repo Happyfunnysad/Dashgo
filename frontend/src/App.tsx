@@ -4,6 +4,7 @@ import { DashboardPage } from './pages/Dashboard';
 import { SettingsPage } from './pages/Settings';
 import { TailscalePageWithIcons } from './pages/TailscalePageWithIcons';
 import { LoginPage } from './pages/LoginPage';
+import { OnboardingWizard } from './pages/OnboardingWizard';
 import { authApi } from './utils/api';
 import { authStorage } from './utils/authStorage';
 import './index.css';
@@ -81,13 +82,11 @@ function App() {
   }
 
   // Setup or Login
-  if (authState === 'setup' || authState === 'login') {
-    return (
-      <LoginPage
-        isSetup={authState === 'setup'}
-        onAuthenticated={handleAuthenticated}
-      />
-    );
+  if (authState === 'setup') {
+    return <OnboardingWizard onComplete={handleAuthenticated} />;
+  }
+  if (authState === 'login') {
+    return <LoginPage onAuthenticated={handleAuthenticated} />;
   }
 
   // Authenticated — show main app

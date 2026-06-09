@@ -32,6 +32,7 @@ describe('SettingsPage', () => {
   });
 
   afterEach(() => {
+    // @ts-ignore
     window.location = originalLocation;
   });
 

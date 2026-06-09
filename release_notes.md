@@ -1,3 +1,15 @@
+# Dashgo v0.1.1 - Performance & Stability Release
+
+This release addresses critical performance issues, metrics calculation inaccuracies, and stability on the backend:
+
+- **Registry API Updates Verification**: Replaced high-overhead image layer downloads (`ImagePull`) with lightweight Registry API `HEAD` requests. Updates are now checked via headers without downloading layers.
+- **Accurate CPU Usage Calculation**: Solved host metrics calculations by shifting from inaccurate system load average computations to precise delta calculations over a `/proc/stat` snapshot window.
+- **Docker Client Context Timeouts**: Added robust per-call contexts with timeouts to ensure that Docker SDK operations cannot hang indefinitely if the daemon becomes unresponsive.
+- **Go Toolchain Alignment**: Upgraded the backend `go.mod` Go version directive to `1.24.0` to match the builder image environment in the `Dockerfile`.
+- **Test Coverage**: Added structured unit/integration test suites for all backend internal packages (`auth`, `db`, `docker`, `sys`, `updater`, `utils`).
+
+---
+
 # Dashgo v0.1.0 - Initial Release
 
 Welcome to the first release of **Dashgo**!

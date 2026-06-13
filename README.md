@@ -104,6 +104,7 @@ the API stays locked.
 ```yaml
 services:
   dashgo:
+    build: .
     image: ghcr.io/happyfunnysad/dashgo:latest
     container_name: dashgo
     ports:

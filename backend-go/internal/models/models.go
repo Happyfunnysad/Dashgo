@@ -112,6 +112,7 @@ type HardwareStats struct {
 
 	// System
 	Hostname       string  `json:"hostname"`
+	Platform       string  `json:"platform"`
 	KernelVersion  string  `json:"kernelVersion"`
 	UptimeSeconds  float64 `json:"uptimeSeconds"`
 	UptimeFormatted string `json:"uptimeFormatted"`

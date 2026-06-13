@@ -17,7 +17,7 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o docker-dashboard main.go
 
 # --- Stage 3: Final Image ---
-FROM alpine:latest
+FROM alpine:3.19
 WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata tailscale
 COPY --from=backend-builder /app/docker-dashboard .

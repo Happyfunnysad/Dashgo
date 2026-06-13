@@ -111,6 +111,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [authConfigured, setAuthConfigured] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   const [detectingLocal, setDetectingLocal] = useState(false);
   const [showDevicePicker, setShowDevicePicker] = useState(false);
@@ -231,6 +232,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
       setPasswordError(err.response?.data?.error || 'Failed to change password');
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      await authApi.resetPassword();
+      authStorage.clearToken();
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to reset password');
     }
   };
 
@@ -485,6 +496,43 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
                       </button>
                       <button
                         onClick={() => { setShowPasswordForm(false); setPasswordError(''); setPasswordSuccess(''); }}
+                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {authConfigured && (
+              <div className="mt-6 pt-6 border-t border-slate-700/50">
+                <p className="text-sm font-medium text-red-400 mb-1">Danger Zone</p>
+                <p className="text-xs text-slate-500 mb-3">Resetting the password hash will wipe the admin credentials and put the dashboard back in setup mode.</p>
+                
+                {!showResetConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    className="px-4 py-2 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Reset Password Hash
+                  </button>
+                ) : (
+                  <div className="space-y-3 p-4 bg-red-500/5 rounded-lg border border-red-500/20">
+                    <p className="text-xs text-red-400 font-semibold">Are you absolutely sure? This will log everyone out and force the dashboard into onboarding mode on next load.</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResetPassword}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Yes, Reset Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowResetConfirm(false)}
                         className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors"
                       >
                         Cancel

@@ -2,7 +2,7 @@ package db
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -34,6 +34,11 @@ func InitDB(path string) error {
 		}
 	}
 
+	// Initialize encryption key
+	if err := initEncryptionKey(); err != nil {
+		return err
+	}
+
 	// Default settings
 	config.Settings = models.Settings{
 		DefaultProtocol:     "http",
@@ -43,12 +48,36 @@ func InitDB(path string) error {
 
 	// Load if exists
 	if _, err := os.Stat(configPath); err == nil {
-		data, err := ioutil.ReadFile(configPath)
+		data, err := os.ReadFile(configPath)
 		if err != nil {
 			return err
 		}
 		if err := json.Unmarshal(data, &config); err != nil {
-			return err
+			// Corrupted config: log warning, reset, and save fresh
+			log.Printf("Warning: Failed to parse config file (corrupted JSON). Resetting config: %v", err)
+			config.Settings = models.Settings{
+				DefaultProtocol:     "http",
+				AutoRefreshInterval: 10,
+			}
+			config.Aliases = make(map[string]models.Alias)
+			config.PasswordHash = ""
+		} else {
+			// Decrypt sensitive settings
+			if dec, err := decrypt(config.Settings.LocalNetworkIP); err == nil {
+				config.Settings.LocalNetworkIP = dec
+			}
+			if dec, err := decrypt(config.Settings.TailscaleIP); err == nil {
+				config.Settings.TailscaleIP = dec
+			}
+			if dec, err := decrypt(config.Settings.TailscaleHostname); err == nil {
+				config.Settings.TailscaleHostname = dec
+			}
+			if dec, err := decrypt(config.Settings.Domain); err == nil {
+				config.Settings.Domain = dec
+			}
+			if dec, err := decrypt(config.Settings.WebhookURL); err == nil {
+				config.Settings.WebhookURL = dec
+			}
 		}
 	}
 
@@ -59,13 +88,39 @@ func InitDB(path string) error {
 // directory, then rename) with 0600 perms so the bcrypt password hash is not
 // world-readable and a crash mid-write cannot corrupt the existing config.
 func saveConfig() error {
-	data, err := json.MarshalIndent(config, "", "  ")
+	// Create a copy of the config to encrypt before saving
+	configCopy := config
+
+	// Encrypt sensitive settings
+	var err error
+	configCopy.Settings.LocalNetworkIP, err = encrypt(configCopy.Settings.LocalNetworkIP)
+	if err != nil {
+		return err
+	}
+	configCopy.Settings.TailscaleIP, err = encrypt(configCopy.Settings.TailscaleIP)
+	if err != nil {
+		return err
+	}
+	configCopy.Settings.TailscaleHostname, err = encrypt(configCopy.Settings.TailscaleHostname)
+	if err != nil {
+		return err
+	}
+	configCopy.Settings.Domain, err = encrypt(configCopy.Settings.Domain)
+	if err != nil {
+		return err
+	}
+	configCopy.Settings.WebhookURL, err = encrypt(configCopy.Settings.WebhookURL)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(configCopy, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	dir := filepath.Dir(configPath)
-	tmp, err := ioutil.TempFile(dir, ".config-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".config-*.tmp")
 	if err != nil {
 		return err
 	}

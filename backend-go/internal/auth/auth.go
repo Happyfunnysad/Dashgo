@@ -197,3 +197,10 @@ func generateToken() (string, error) {
 	}
 	return hex.EncodeToString(bytes), nil
 }
+
+// ClearSessions removes all active sessions.
+func ClearSessions() {
+	mu.Lock()
+	defer mu.Unlock()
+	sessions = make(map[string]Session)
+}

@@ -56,6 +56,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		api.POST("/auth/logout", logoutHandler)
 		api.POST("/auth/change-password", changePasswordHandler)
+		api.POST("/auth/reset", resetPasswordHandler)
 
 		api.GET("/containers", getContainers)
 		api.POST("/containers/:id/start", startContainer)
@@ -513,5 +514,15 @@ func changePasswordHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}
+
+func resetPasswordHandler(c *gin.Context) {
+	if err := db.SetPasswordHash(""); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset password hash"})
+		return
+	}
+	auth.SetPasswordHash("")
+	auth.ClearSessions()
+	c.JSON(http.StatusOK, gin.H{"message": "Password hash cleared successfully"})
 }
 

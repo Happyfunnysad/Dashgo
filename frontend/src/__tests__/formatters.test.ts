@@ -25,6 +25,6 @@ describe('i18n', () => {
   it('should have ru locale loaded', async () => {
     const ru = await import('../locales/ru.json');
     expect(ru.default.app.name).toBe('Dashgo');
-    expect(ru.default.nav.dashboard).toBe('Dashboard');
+    expect(ru.default.nav.dashboard).toBe('Панель');
   });
 });

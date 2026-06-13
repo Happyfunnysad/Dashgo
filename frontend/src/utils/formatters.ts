@@ -66,21 +66,16 @@ export function copyToClipboard(text: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
         const textArea = document.createElement("textarea");
-        textArea.value = text;
-        
-        // Prevent scrolling to bottom of page
         textArea.style.top = "0";
         textArea.style.left = "0";
         textArea.style.position = "fixed";
         textArea.style.opacity = "0";
-        
+        textArea.value = text;
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        
         const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
-        
         if (successful) {
           resolve();
         } else {
@@ -91,4 +86,12 @@ export function copyToClipboard(text: string): Promise<void> {
       }
     });
   }
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { containerApi, Settings } from '../utils/api';
 import { authApi } from '../utils/api';
 import { authStorage } from '../utils/authStorage';
@@ -84,6 +85,7 @@ const SectionCard: React.FC<{ id: string; title: string; description?: string; c
 interface SettingsPageProps {}
 
 export const SettingsPage: React.FC<SettingsPageProps> = () => {
+  const { t, i18n } = useTranslation();
   const [settings, setSettings] = useState<Settings>({
     localNetworkIp: '',
     tailscaleIp: '',
@@ -140,6 +142,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
       ...prev,
       [name]: name === 'autoRefreshInterval' ? parseInt(value, 10) || 0 : value,
     }));
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
   };
 
   const handleSave = async () => {
@@ -290,6 +296,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = () => {
               >
                 <option value="http">HTTP</option>
                 <option value="https">HTTPS</option>
+              </select>
+            </Field>
+            <Field label={t('app.language')}>
+              <select
+                value={i18n.language}
+                onChange={e => handleLanguageChange(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-900/50 text-slate-100 rounded-lg border border-slate-700 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
+                <option value="zh">中文</option>
               </select>
             </Field>
           </SectionCard>

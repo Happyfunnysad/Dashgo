@@ -55,9 +55,9 @@ const HostBar: React.FC<{ hw: HardwareStats | null; stats: Stats | null; updates
   return (
     <div className="flex items-center gap-3 flex-wrap mb-6">
       {/* Host status */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-lg border border-green-500/20">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-lg border border-green-500/20" title={hw?.platform}>
         <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.4)]" />
-        <span className="text-xs font-semibold text-green-400">{hw?.hostname || 'Host'}</span>
+        <span className="text-xs font-semibold text-green-400">{hw?.hostname || 'Host'} {hw?.platform ? `(${hw.platform})` : ''}</span>
       </div>
 
       {/* Metrics pills */}
@@ -66,12 +66,17 @@ const HostBar: React.FC<{ hw: HardwareStats | null; stats: Stats | null; updates
           <Pill label="CPU" value={`${hw.cpuUsagePercent.toFixed(0)}%`} warn={hw.cpuUsagePercent > 80} />
           <Pill label="RAM" value={`${formatBytes(hw.memoryUsedBytes)} / ${formatBytes(hw.memoryTotalBytes)}`} warn={hw.memoryUsagePercent > 85} />
           <Pill label="Disk" value={`${hw.diskUsagePercent.toFixed(0)}%`} warn={hw.diskUsagePercent > 90} />
-          {hw.cpuTempCelsius > 0 && (
+          {hw.cpuTempCelsius > 0 ? (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700/50">
               <svg className="w-3.5 h-3.5" style={{ color: tempColor(hw.cpuTempCelsius) }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /></svg>
               <span className="text-xs font-mono" style={{ color: tempColor(hw.cpuTempCelsius) }}>{hw.cpuTempCelsius.toFixed(0)}°C</span>
             </div>
-          )}
+          ) : (hw.platform?.includes('macOS') || hw.platform?.includes('Windows')) ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700/50 opacity-50" title={`Sensors not accessible in ${hw.platform}`}>
+              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /></svg>
+              <span className="text-xs font-mono text-slate-500">N/A</span>
+            </div>
+          ) : null}
         </>
       )}
 

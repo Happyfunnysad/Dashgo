@@ -158,10 +158,23 @@ func GetHardwareStats() (*models.HardwareStats, error) {
 	// --- Kernel ---
 	version, err := os.ReadFile(filepath.Join(procRoot(), "version"))
 	if err == nil {
-		parts := strings.Fields(string(version))
+		versionStr := string(version)
+		parts := strings.Fields(versionStr)
 		if len(parts) >= 3 {
 			stats.KernelVersion = parts[2]
 		}
+		
+		// Determine Platform based on kernel version string
+		kernelLower := strings.ToLower(versionStr)
+		if strings.Contains(kernelLower, "linuxkit") {
+			stats.Platform = "macOS (Docker)"
+		} else if strings.Contains(kernelLower, "microsoft") || strings.Contains(kernelLower, "wsl") {
+			stats.Platform = "Windows (Docker/WSL)"
+		} else {
+			stats.Platform = "Linux"
+		}
+	} else {
+		stats.Platform = "Unknown"
 	}
 
 	// Format uptime

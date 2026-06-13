@@ -124,6 +124,7 @@ export interface HardwareStats {
   cpuTempCelsius: number;
   temperatures: ThermalZone[];
   hostname: string;
+  platform: string;
   kernelVersion: string;
   uptimeSeconds: number;
   uptimeFormatted: string;

@@ -232,30 +232,3 @@ The following security measures were verified as correctly implemented:
 | 7 | F5: Add container ID validation | Low | Low |
 | 8 | F8: Increase password minimum | Low | Low |
 
----
-
-## Security Contact
-
-For security vulnerabilities or concerns, please:
-1. Check if the issue is already reported in the issue tracker
-2. For sensitive vulnerabilities, contact the maintainers directly
-3. Do not disclose security issues publicly until a fix is available
-
----
-
-## Audit Methodology
-
-This audit was performed using static code analysis of:
-- `backend-go/internal/api/handlers.go`
-- `backend-go/internal/auth/auth.go`
-- `backend-go/internal/db/db.go`
-- `backend-go/internal/utils/network.go`
-- `backend-go/internal/docker/docker.go`
-- `backend-go/internal/updater/updater.go`
-- `backend-go/main.go`
-- `frontend/src/utils/authStorage.ts`
-- `frontend/src/utils/api.ts`
-- `docker-compose.yml`
-- `Dockerfile`
-
-No dynamic testing or penetration testing was performed as part of this audit.

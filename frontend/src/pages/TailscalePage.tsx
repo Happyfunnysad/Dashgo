@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTailscaleStatus } from '../hooks/useTailscaleStatus';
-import { TailscalePeer, containerApi, Container } from '../utils/api';
+import { TailscalePeer, containerApi, Container, Settings } from '../utils/api';
 import { TailscaleLoadingSkeleton } from '../components/tailscale/TailscaleLoadingSkeleton';
 import { TailscaleErrorState } from '../components/tailscale/TailscaleErrorState';
 import { TailscaleLoginCard } from '../components/tailscale/TailscaleLoginCard';
@@ -44,6 +44,23 @@ const getTailnetHttpPorts = (container: Container) => {
   });
 };
 
+const normalizeLinkHost = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+
+  try {
+    const parsed = new URL(trimmed.includes('://') ? trimmed : `http://${trimmed}`);
+    return parsed.hostname.replace(/\.$/, '');
+  } catch {
+    return trimmed
+      .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+      .replace(/^\/\//, '')
+      .split(/[/?#]/)[0]
+      .replace(/\.$/, '')
+      .trim();
+  }
+};
+
 const getOSIcon = (os: string) => {
   const l = os.toLowerCase();
   if (l.includes('linux')) return '🐧';
@@ -66,6 +83,7 @@ export const TailscalePage: React.FC<TailscalePageProps> = () => {
   const { status, error, loading, authLoading, deletingPeer, refresh, handleAuth, handleDeleteDevice } = useTailscaleStatus();
   const [deviceToDelete, setDeviceToDelete] = useState<{ id: string; name: string } | null>(null);
   const [containers, setContainers] = useState<Container[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [lastSynced, setLastSynced] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [osFilter, setOsFilter] = useState('all');
@@ -77,6 +95,10 @@ export const TailscalePage: React.FC<TailscalePageProps> = () => {
     try {
       const res = await containerApi.getContainers();
       setContainers(res.data);
+    } catch {}
+    try {
+      const res = await containerApi.getSettings();
+      setSettings(res.data);
     } catch {}
   }, []);
 
@@ -103,6 +125,12 @@ export const TailscalePage: React.FC<TailscalePageProps> = () => {
   const onlineCount = peers.filter(p => p.Online).length;
   const publishedServices = containers.filter(c => c.isPublished && c.status === 'running');
   const tailscaleIp = selfNode?.TailscaleIPs?.[0] || '';
+  const tailnetHost =
+    normalizeLinkHost(settings?.tailscaleHostname) ||
+    normalizeLinkHost(settings?.domain) ||
+    normalizeLinkHost(selfNode?.DNSName) ||
+    tailscaleIp;
+  const tailnetProtocol = settings?.defaultProtocol || 'http';
   const syncAgo = Math.floor((Date.now() - lastSynced.getTime()) / 1000);
 
   // Filters — useMemo must always run (no conditional hooks)
@@ -367,10 +395,11 @@ export const TailscalePage: React.FC<TailscalePageProps> = () => {
                         <span className={`w-2 h-2 rounded-full ${svc.health === 'healthy' ? 'bg-green-400' : svc.health === 'unhealthy' ? 'bg-red-400' : 'bg-slate-500'}`} />
                       </div>
                       {getTailnetHttpPorts(svc).map((port, idx) => {
-                        const url = `http://${tailscaleIp}:${port.publicPort}`;
+                        const protocol = svc.protocol || tailnetProtocol;
+                        const url = `${protocol}://${tailnetHost}:${port.publicPort}`;
                         return (
                           <div key={idx} className="flex items-center gap-1.5 mt-1">
-                            <span className="font-mono text-[11px] text-slate-400 flex-1 truncate">{tailscaleIp}:{port.publicPort}</span>
+                            <span className="font-mono text-[11px] text-slate-400 flex-1 truncate">{tailnetHost}:{port.publicPort}</span>
                             <a
                               href={url}
                               target="_blank"

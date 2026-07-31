@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -128,6 +129,24 @@ func appendUniquePublishedPort(ports []models.PublishedPort, port models.Publish
 	return append(ports, port)
 }
 
+func normalizeLinkHost(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+
+	if parsed, err := url.Parse(value); err == nil && parsed.Host != "" {
+		value = parsed.Host
+	} else {
+		value = strings.TrimPrefix(value, "//")
+		if idx := strings.IndexAny(value, "/?#"); idx >= 0 {
+			value = value[:idx]
+		}
+	}
+
+	return strings.TrimSpace(strings.TrimSuffix(value, "."))
+}
+
 func generateAccessLinks(info models.ContainerInfo, settings models.Settings) []models.AccessLink {
 	links := []models.AccessLink{}
 	if len(info.Ports) == 0 {
@@ -153,26 +172,32 @@ func generateAccessLinks(info models.ContainerInfo, settings models.Settings) []
 		protocol = "http"
 	}
 
-	if settings.LocalNetworkIP != "" {
+	localHost := normalizeLinkHost(settings.LocalNetworkIP)
+	if localHost != "" {
 		links = append(links, models.AccessLink{
 			Label: "Local",
-			URL:   fmt.Sprintf("%s://%s:%d", protocol, settings.LocalNetworkIP, port),
+			URL:   fmt.Sprintf("%s://%s:%d", protocol, localHost, port),
 			Type:  "local",
 		})
 	}
 
-	if settings.TailscaleIP != "" {
+	tailscaleHost := normalizeLinkHost(settings.TailscaleHostname)
+	if tailscaleHost == "" {
+		tailscaleHost = normalizeLinkHost(settings.TailscaleIP)
+	}
+	if tailscaleHost != "" {
 		links = append(links, models.AccessLink{
 			Label: "Tailscale",
-			URL:   fmt.Sprintf("%s://%s:%d", protocol, settings.TailscaleIP, port),
+			URL:   fmt.Sprintf("%s://%s:%d", protocol, tailscaleHost, port),
 			Type:  "tailscale",
 		})
 	}
 
-	if settings.Domain != "" {
+	domainHost := normalizeLinkHost(settings.Domain)
+	if domainHost != "" {
 		links = append(links, models.AccessLink{
 			Label: "Domain",
-			URL:   fmt.Sprintf("%s://%s:%d", protocol, settings.Domain, port),
+			URL:   fmt.Sprintf("%s://%s:%d", protocol, domainHost, port),
 			Type:  "domain",
 		})
 	}

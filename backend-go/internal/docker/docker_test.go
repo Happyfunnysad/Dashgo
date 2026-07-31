@@ -55,6 +55,34 @@ func TestGenerateAccessLinks_TailscaleAndDomain(t *testing.T) {
 	}
 }
 
+func TestGenerateAccessLinks_NormalizesConfiguredHosts(t *testing.T) {
+	info := models.ContainerInfo{
+		Ports: []models.PublishedPort{{PublicPort: 8093, PrivatePort: 3000, Type: "tcp"}},
+	}
+	settings := models.Settings{
+		LocalNetworkIP:    " 192.168.2.100 ",
+		TailscaleIP:       "100.125.8.15",
+		TailscaleHostname: "dashgo-tailscale-1.tail72c6d0.ts.net.",
+		Domain:            "https://dietpi.tail72c6d0.ts.net/",
+		DefaultProtocol:   "https",
+	}
+	links := generateAccessLinks(info, settings)
+	types := map[string]string{}
+	for _, l := range links {
+		types[l.Type] = l.URL
+	}
+
+	if types["local"] != "https://192.168.2.100:8093" {
+		t.Errorf("wrong normalized local URL: %q", types["local"])
+	}
+	if types["tailscale"] != "https://dashgo-tailscale-1.tail72c6d0.ts.net:8093" {
+		t.Errorf("wrong normalized tailscale URL: %q", types["tailscale"])
+	}
+	if types["domain"] != "https://dietpi.tail72c6d0.ts.net:8093" {
+		t.Errorf("wrong normalized domain URL: %q", types["domain"])
+	}
+}
+
 func TestGenerateAccessLinks_PrimaryPortOverride(t *testing.T) {
 	info := models.ContainerInfo{
 		Ports: []models.PublishedPort{

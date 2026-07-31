@@ -68,7 +68,7 @@ func GetRunningContainers() ([]models.ContainerInfo, error) {
 			Image:       c.Image,
 			Status:      c.State,
 			Created:     c.Created,
-			IsPublished: len(c.Ports) > 0,
+			IsPublished: false,
 			Project:     c.Labels["com.docker.compose.project"],
 			Ports:       []models.PublishedPort{},
 		}
@@ -88,7 +88,7 @@ func GetRunningContainers() ([]models.ContainerInfo, error) {
 		// Parse ports
 		for _, p := range c.Ports {
 			if p.PublicPort > 0 {
-				info.Ports = append(info.Ports, models.PublishedPort{
+				info.Ports = appendUniquePublishedPort(info.Ports, models.PublishedPort{
 					PrivatePort: int(p.PrivatePort),
 					PublicPort:  int(p.PublicPort),
 					Type:        p.Type,
@@ -96,6 +96,7 @@ func GetRunningContainers() ([]models.ContainerInfo, error) {
 				})
 			}
 		}
+		info.IsPublished = len(info.Ports) > 0
 
 		// Apply alias
 		if alias, ok := aliases[c.ID]; ok {
@@ -114,6 +115,17 @@ func GetRunningContainers() ([]models.ContainerInfo, error) {
 	}
 
 	return enriched, nil
+}
+
+func appendUniquePublishedPort(ports []models.PublishedPort, port models.PublishedPort) []models.PublishedPort {
+	for _, existing := range ports {
+		if existing.PrivatePort == port.PrivatePort &&
+			existing.PublicPort == port.PublicPort &&
+			strings.EqualFold(existing.Type, port.Type) {
+			return ports
+		}
+	}
+	return append(ports, port)
 }
 
 func generateAccessLinks(info models.ContainerInfo, settings models.Settings) []models.AccessLink {

@@ -34,6 +34,16 @@ const formatLastSeen = (ts?: string) => {
   return `${Math.floor(diff / 86400)}d ago`;
 };
 
+const getTailnetHttpPorts = (container: Container) => {
+  const seen = new Set<number>();
+  return container.ports.filter(port => {
+    if (!port.publicPort || port.type?.toLowerCase() !== 'tcp') return false;
+    if (seen.has(port.publicPort)) return false;
+    seen.add(port.publicPort);
+    return true;
+  });
+};
+
 const getOSIcon = (os: string) => {
   const l = os.toLowerCase();
   if (l.includes('linux')) return '🐧';
@@ -356,7 +366,7 @@ export const TailscalePage: React.FC<TailscalePageProps> = () => {
                         <span className="text-sm font-medium text-slate-200">{svc.displayName}</span>
                         <span className={`w-2 h-2 rounded-full ${svc.health === 'healthy' ? 'bg-green-400' : svc.health === 'unhealthy' ? 'bg-red-400' : 'bg-slate-500'}`} />
                       </div>
-                      {svc.ports.filter(p => p.publicPort).map((port, idx) => {
+                      {getTailnetHttpPorts(svc).map((port, idx) => {
                         const url = `http://${tailscaleIp}:${port.publicPort}`;
                         return (
                           <div key={idx} className="flex items-center gap-1.5 mt-1">

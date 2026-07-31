@@ -72,6 +72,20 @@ func TestGenerateAccessLinks_PrimaryPortOverride(t *testing.T) {
 	}
 }
 
+func TestAppendUniquePublishedPort_DeduplicatesIPv4AndIPv6Bindings(t *testing.T) {
+	ports := []models.PublishedPort{}
+	ports = appendUniquePublishedPort(ports, models.PublishedPort{PublicPort: 8080, PrivatePort: 80, Type: "tcp", Host: "0.0.0.0"})
+	ports = appendUniquePublishedPort(ports, models.PublishedPort{PublicPort: 8080, PrivatePort: 80, Type: "tcp", Host: "::"})
+	ports = appendUniquePublishedPort(ports, models.PublishedPort{PublicPort: 8080, PrivatePort: 80, Type: "udp", Host: "::"})
+
+	if len(ports) != 2 {
+		t.Fatalf("expected tcp IPv4/IPv6 bindings to deduplicate while keeping udp, got %#v", ports)
+	}
+	if ports[0].Type != "tcp" || ports[1].Type != "udp" {
+		t.Fatalf("unexpected port protocols after dedupe: %#v", ports)
+	}
+}
+
 func TestIsSensitiveEnvKey(t *testing.T) {
 	sensitive := []string{
 		"DB_PASSWORD", "API_KEY", "SECRET_TOKEN", "AUTH_TOKEN",

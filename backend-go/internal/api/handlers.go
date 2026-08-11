@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"docker-dashboard/internal/docker"
 	"docker-dashboard/internal/models"
 	"docker-dashboard/internal/sys"
+	"docker-dashboard/internal/templates"
 	"docker-dashboard/internal/updater"
 	"docker-dashboard/internal/utils"
 
@@ -83,6 +85,15 @@ func RegisterRoutes(r *gin.Engine) {
 		api.POST("/projects/:name/start", projectAction("start"))
 		api.POST("/projects/:name/stop", projectAction("stop"))
 		api.POST("/projects/:name/restart", projectAction("restart"))
+
+		// Template library
+		api.GET("/templates", getTemplates)
+		api.POST("/templates/compose", generateTemplateCompose)
+		api.POST("/templates/deploy", deployTemplate)
+		api.GET("/templates/sources", getTemplateSources)
+		api.PUT("/templates/sources", updateTemplateSource)
+		api.POST("/templates/sources", addTemplateSource)
+		api.DELETE("/templates/sources", deleteTemplateSource)
 
 		// Update manager
 		api.GET("/updates", getUpdateStatuses)
@@ -243,7 +254,7 @@ func inspectContainer(c *gin.Context) {
 func deleteTailscaleDevice(c *gin.Context) {
 	deviceID := c.Param("deviceId")
 	apiKey := c.GetHeader("X-Tailscale-Api-Key")
-	
+
 	if apiKey == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tailscale API Key is missing from headers"})
 		return
@@ -383,6 +394,126 @@ func projectAction(action string) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": action + "ed", "affected": affected})
 	}
+}
+
+// --- Template Library ---
+
+func getTemplates(c *gin.Context) {
+	items := templates.FetchAll(c.Request.Context(), db.GetTemplateSources())
+	c.JSON(http.StatusOK, items)
+}
+
+func generateTemplateCompose(c *gin.Context) {
+	var request struct {
+		Template models.TemplateItem `json:"template" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Template is required"})
+		return
+	}
+	compose, err := templates.GenerateCompose(c.Request.Context(), request.Template)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"compose": compose})
+}
+
+func deployTemplate(c *gin.Context) {
+	var request struct {
+		Name    string `json:"name" binding:"required"`
+		Compose string `json:"compose" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name and compose content are required"})
+		return
+	}
+	output, err := docker.DeployComposeStack(request.Name, request.Compose)
+	if err != nil {
+		log.Printf("[ERROR] deployTemplate name=%s: %v", request.Name, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "output": output})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "output": output})
+}
+
+func getTemplateSources(c *gin.Context) {
+	c.JSON(http.StatusOK, db.GetTemplateSources())
+}
+
+func updateTemplateSource(c *gin.Context) {
+	var request struct {
+		ID      int     `json:"id" binding:"required"`
+		Enabled *bool   `json:"enabled"`
+		Name    *string `json:"name"`
+		URL     *string `json:"url"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Source id is required"})
+		return
+	}
+	if request.Name != nil {
+		trimmed := strings.TrimSpace(*request.Name)
+		if trimmed == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Source name is required"})
+			return
+		}
+		request.Name = &trimmed
+	}
+	if request.URL != nil {
+		trimmed := strings.TrimSpace(*request.URL)
+		if !validTemplateSourceURL(trimmed) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Source URL must use http or https"})
+			return
+		}
+		request.URL = &trimmed
+	}
+	if err := db.UpdateTemplateSource(request.ID, request.Enabled, request.Name, request.URL); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template source not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func addTemplateSource(c *gin.Context) {
+	var request struct {
+		Name string `json:"name" binding:"required"`
+		URL  string `json:"url" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name and URL are required"})
+		return
+	}
+	request.Name = strings.TrimSpace(request.Name)
+	request.URL = strings.TrimSpace(request.URL)
+	if request.Name == "" || !validTemplateSourceURL(request.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name and a valid http(s) URL are required"})
+		return
+	}
+	source, err := db.AddTemplateSource(request.Name, request.URL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save template source"})
+		return
+	}
+	c.JSON(http.StatusOK, source)
+}
+
+func deleteTemplateSource(c *gin.Context) {
+	id, err := strconv.Atoi(c.Query("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Source id is required"})
+		return
+	}
+	if err := db.DeleteTemplateSource(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func validTemplateSourceURL(value string) bool {
+	parsed, err := url.ParseRequestURI(value)
+	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
 }
 
 // --- Update Manager ---
@@ -525,4 +656,3 @@ func resetPasswordHandler(c *gin.Context) {
 	auth.ClearSessions()
 	c.JSON(http.StatusOK, gin.H{"message": "Password hash cleared successfully"})
 }
-

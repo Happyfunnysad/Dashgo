@@ -4,12 +4,12 @@
 
 **A lightweight Docker dashboard for single-board computers and home servers.**
 
-Go backend · React + TypeScript frontend · single binary · ~25 MB image · native Tailscale.
+Go backend · React + TypeScript frontend · compact image · native Tailscale.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white)](backend-go/go.mod)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](frontend)
-![Image size](https://img.shields.io/badge/image-~25MB-success)
+[![Docker Compose](https://img.shields.io/badge/Docker%20Compose-included-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 ![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-lightgrey)
 [![Tailscale](https://img.shields.io/badge/Tailscale-native-242424?logo=tailscale&logoColor=white)](https://tailscale.com)
 
@@ -19,13 +19,13 @@ Go backend · React + TypeScript frontend · single binary · ~25 MB image · na
 
 ## Why Dashgo?
 
-Portainer is heavy for a Raspberry Pi. Dashgo is a single ~25 MB Alpine image that gives you a fast,
+Portainer is heavy for a Raspberry Pi. Dashgo is a compact image that gives you a fast,
 password-protected dashboard for your containers — with **Tailscale built in**, so every service gets a
 clean `https://<host>.tailnet.ts.net` link you can reach from anywhere, no port-forwarding required.
 
 - Runs comfortably on a Raspberry Pi / Orange Pi (multi-arch `amd64` + `arm64`)
 - Hardware gauges (CPU, RAM, disk, **temperature**) right on the dashboard
-- One binary, one container, no database to run
+- One container, no database to run
 
 ## Quick Start
 
@@ -54,6 +54,7 @@ the API stays locked.
 - **Onboarding Wizard** — guided first-time setup for password, Tailscale auth, and network settings
 - **Dashboard** — real-time container monitoring with host metrics (CPU, RAM, disk, temperature)
 - **Compose stacks** — containers grouped by project; start/stop/restart an entire stack at once
+- **Template library** — browse catalogs, manage sources, edit generated Compose, and deploy
 - **Details drawer** — click any container for ports, resource usage, live logs, inspect, and access links
 - **Native Tailnet** — built-in Tailscale: device picker, online status, MagicDNS, and services published over your tailnet
 - **Access links** — auto-generated Local / Tailscale / Domain links with smart IP auto-detection
@@ -71,14 +72,14 @@ the API stays locked.
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Auth     | bcrypt (cost 12) + in-memory session tokens (24 h TTL) |
 | Storage  | JSON file (`/app/data/config.json`) |
-| Image    | Alpine Linux, ~25 MB final image, `amd64` + `arm64` |
+| Image    | Debian slim with Docker Compose, `amd64` + `arm64` |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
 │  Browser                                         │
-│  React SPA (Dashboard · Tailnet · Settings)      │
+│  React SPA (Dashboard · Templates · Settings)    │
 └────────────────────┬─────────────────────────────┘
                      │ HTTP / JSON
 ┌────────────────────▼─────────────────────────────┐
@@ -91,7 +92,8 @@ the API stays locked.
 │  ├── /api/auth/*        Login, setup, logout     │
 │  ├── /api/settings      Configuration            │
 │  ├── /api/aliases       Container aliases        │
-│  └── /api/projects/*    Compose stack actions    │
+│  ├── /api/projects/*    Compose stack actions    │
+│  └── /api/templates/*   Template library/deploy  │
 │                                                   │
 │  Docker socket (/var/run/docker.sock, read-only)  │
 │  Tailscale socket (shared /run/tailscale volume)  │
@@ -179,7 +181,7 @@ dashgo/
 │   │   └── utils/                 # api.ts, formatters, authStorage
 │   ├── index.html
 │   └── vite.config.ts
-├── Dockerfile                     # Multi-stage: node → go → alpine
+├── Dockerfile                     # Multi-stage: node → go → Debian slim
 ├── docker-compose.yml
 └── README.md
 ```
@@ -207,6 +209,7 @@ dashgo/
 | `DB_PATH`       | `/app/data/config.json`      | Config file path         |
 | `PORT`          | `8088`                       | HTTP listen port         |
 | `TS_AUTHKEY`    | —                            | Tailscale auth key       |
+| `STACKS_DIR`    | `data/stacks`                | Generated Compose files  |
 
 ## License
 

@@ -45,6 +45,12 @@
   to { transform: translateY(0); }
 }
 
+@layer components {
+  .source-input {
+    @apply mt-1 block h-8 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-normal text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-green-500/60;
+  }
+}
+
 /* Mobile layout: keep the existing TypeScript components and reshape them with CSS. */
 @media (max-width: 767px) {
   /* Dashboard and Tailnet page gutters */

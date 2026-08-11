@@ -32,13 +32,13 @@ type AccessLink struct {
 }
 
 type Settings struct {
-	LocalNetworkIP        string `json:"localNetworkIp"`
-	TailscaleIP           string `json:"tailscaleIp"`
-	TailscaleHostname     string `json:"tailscaleHostname"`
-	Domain                string `json:"domain"`
-	DefaultProtocol       string `json:"defaultProtocol"`
-	AutoRefreshInterval   int    `json:"autoRefreshInterval"`
-	WebhookURL            string `json:"webhookUrl"`
+	LocalNetworkIP      string `json:"localNetworkIp"`
+	TailscaleIP         string `json:"tailscaleIp"`
+	TailscaleHostname   string `json:"tailscaleHostname"`
+	Domain              string `json:"domain"`
+	DefaultProtocol     string `json:"defaultProtocol"`
+	AutoRefreshInterval int    `json:"autoRefreshInterval"`
+	WebhookURL          string `json:"webhookUrl"`
 }
 
 type Alias struct {
@@ -111,11 +111,11 @@ type HardwareStats struct {
 	Temperatures   []ThermalZone `json:"temperatures"`
 
 	// System
-	Hostname       string  `json:"hostname"`
-	Platform       string  `json:"platform"`
-	KernelVersion  string  `json:"kernelVersion"`
-	UptimeSeconds  float64 `json:"uptimeSeconds"`
-	UptimeFormatted string `json:"uptimeFormatted"`
+	Hostname        string  `json:"hostname"`
+	Platform        string  `json:"platform"`
+	KernelVersion   string  `json:"kernelVersion"`
+	UptimeSeconds   float64 `json:"uptimeSeconds"`
+	UptimeFormatted string  `json:"uptimeFormatted"`
 }
 
 type ImageUpdateStatus struct {
@@ -128,3 +128,49 @@ type ImageUpdateStatus struct {
 	CheckedAt     int64  `json:"checkedAt"`
 }
 
+type TemplateSource struct {
+	ID        int    `json:"id"`
+	SourceID  string `json:"sourceId"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Enabled   bool   `json:"enabled"`
+	Builtin   bool   `json:"builtin"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+type TemplateVolume struct {
+	Bind      string `json:"bind"`
+	Container string `json:"container"`
+}
+
+type TemplateEnv struct {
+	Name    string `json:"name"`
+	Label   string `json:"label"`
+	Default string `json:"default,omitempty"`
+}
+
+type TemplateRepository struct {
+	URL       string `json:"url"`
+	Stackfile string `json:"stackfile"`
+}
+
+type TemplateItem struct {
+	ID            string              `json:"id"`
+	Type          string              `json:"type"`
+	Title         string              `json:"title"`
+	Description   string              `json:"description"`
+	Logo          string              `json:"logo"`
+	Categories    []string            `json:"categories"`
+	Source        string              `json:"source"`
+	Image         string              `json:"image,omitempty"`
+	Ports         []string            `json:"ports,omitempty"`
+	Volumes       []TemplateVolume    `json:"volumes,omitempty"`
+	Env           []TemplateEnv       `json:"env,omitempty"`
+	RestartPolicy string              `json:"restartPolicy,omitempty"`
+	Repository    *TemplateRepository `json:"repository,omitempty"`
+	Stars         int64               `json:"stars,omitempty"`
+	Pulls         int64               `json:"pulls,omitempty"`
+	Network       string              `json:"network,omitempty"`
+	Note          string              `json:"note,omitempty"`
+	ProjectURL    string              `json:"projectUrl,omitempty"`
+}

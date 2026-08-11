@@ -125,6 +125,40 @@ func TestConfigRoundTrip(t *testing.T) {
 	}
 }
 
+func TestTemplateSourcesPersist(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := db.InitDB(path); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	if len(db.GetTemplateSources()) != 9 {
+		t.Fatal("expected default template sources")
+	}
+
+	custom, err := db.AddTemplateSource("Custom", "https://example.com/templates.json")
+	if err != nil {
+		t.Fatalf("AddTemplateSource: %v", err)
+	}
+	disabled := false
+	if err := db.UpdateTemplateSource(custom.ID, &disabled, nil, nil); err != nil {
+		t.Fatalf("UpdateTemplateSource: %v", err)
+	}
+	if err := db.InitDB(path); err != nil {
+		t.Fatalf("second InitDB: %v", err)
+	}
+
+	var found *models.TemplateSource
+	for _, source := range db.GetTemplateSources() {
+		if source.ID == custom.ID {
+			copy := source
+			found = &copy
+			break
+		}
+	}
+	if found == nil || found.Enabled {
+		t.Fatalf("custom source did not persist: %#v", found)
+	}
+}
+
 func TestInitDB_CorruptedConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")

@@ -140,6 +140,37 @@ export interface ImageUpdateStatus {
   checkedAt: number;
 }
 
+export interface TemplateSource {
+  id: number;
+  sourceId: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  builtin: boolean;
+  sortOrder: number;
+}
+
+export interface TemplateItem {
+  id: string;
+  type: 'container' | 'stack';
+  title: string;
+  description: string;
+  logo: string;
+  categories: string[];
+  source: string;
+  image?: string;
+  ports?: string[];
+  volumes?: Array<{ bind: string; container: string }>;
+  env?: Array<{ name: string; label: string; default?: string }>;
+  restartPolicy?: string;
+  repository?: { url: string; stackfile: string };
+  stars?: number;
+  pulls?: number;
+  network?: string;
+  note?: string;
+  projectUrl?: string;
+}
+
 export const containerApi = {
   getContainers: () => api.get<Container[]>('/containers'),
   getStats: () => api.get<Stats>('/stats'),
@@ -180,6 +211,18 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword }),
   resetPassword: () => api.post('/auth/reset'),
+};
+
+export const templateApi = {
+  getTemplates: () => api.get<TemplateItem[]>('/templates'),
+  getCompose: (template: TemplateItem) => api.post<{ compose: string }>('/templates/compose', { template }),
+  deploy: (name: string, compose: string) =>
+    api.post<{ success: boolean; output: string }>('/templates/deploy', { name, compose }, { timeout: 15 * 60 * 1000 }),
+  getSources: () => api.get<TemplateSource[]>('/templates/sources'),
+  updateSource: (id: number, updates: Partial<Pick<TemplateSource, 'enabled' | 'name' | 'url'>>) =>
+    api.put('/templates/sources', { id, ...updates }),
+  addSource: (name: string, url: string) => api.post<TemplateSource>('/templates/sources', { name, url }),
+  deleteSource: (id: number) => api.delete('/templates/sources', { params: { id } }),
 };
 
 export default api;

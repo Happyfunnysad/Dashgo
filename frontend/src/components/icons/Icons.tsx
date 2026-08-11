@@ -45,6 +45,13 @@ export const IconContainer = ({ className = 'w-5 h-5' }) => (
   </svg>
 );
 
+export const IconLibrary = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V4H6.5A2.5 2.5 0 004 6.5v13z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8 8h8M8 12h6" />
+  </svg>
+);
+
 export const IconActivity = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />

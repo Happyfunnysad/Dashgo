@@ -5,14 +5,16 @@ import { SettingsPage } from './pages/Settings';
 import { TailscalePageWithIcons } from './pages/TailscalePageWithIcons';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingWizard } from './pages/OnboardingWizard';
+import { TemplatesPage } from './pages/Templates';
 import { authApi } from './utils/api';
 import { authStorage } from './utils/authStorage';
+import type { AppTab } from './components/Sidebar';
 import './index.css';
 
 type AuthState = 'loading' | 'setup' | 'login' | 'authenticated';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'tailscale'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
   const [authState, setAuthState] = useState<AuthState>('loading');
 
   const checkAuth = async () => {
@@ -95,6 +97,7 @@ function App() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
       <main className="flex min-w-0 flex-1 pb-16 md:pb-0">
         {activeTab === 'dashboard' && <DashboardPage />}
+        {activeTab === 'templates' && <TemplatesPage />}
         {activeTab === 'settings' && <SettingsPage />}
         {activeTab === 'tailscale' && <TailscalePageWithIcons />}
       </main>

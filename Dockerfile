@@ -18,10 +18,13 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o docker-dashboard main.go
 
 # --- Stage 3: Final Image ---
+FROM docker/compose-bin:latest AS compose-bin
+
 FROM debian:bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 COPY --from=docker.io/tailscale/tailscale:latest /usr/local/bin/tailscale /usr/bin/tailscale
+COPY --from=compose-bin /docker-compose /usr/local/bin/docker-compose
 COPY --from=backend-builder /app/docker-dashboard .
 RUN mkdir -p /app/data
 

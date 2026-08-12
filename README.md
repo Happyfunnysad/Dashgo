@@ -54,6 +54,7 @@ the API stays locked.
 - **Onboarding Wizard** — guided first-time setup for password, Tailscale auth, and network settings
 - **Dashboard** — real-time container monitoring with host metrics (CPU, RAM, disk, temperature)
 - **Compose stacks** — containers grouped by project; start/stop/restart an entire stack at once
+- **Compose editor** — open, edit, and apply the source Compose file used by current containers
 - **Template library** — browse catalogs, manage sources, edit generated Compose, and deploy
 - **Details drawer** — click any container for ports, resource usage, live logs, inspect, and access links
 - **Native Tailnet** — built-in Tailscale: device picker, online status, MagicDNS, and services published over your tailnet
@@ -93,6 +94,7 @@ the API stays locked.
 │  ├── /api/settings      Configuration            │
 │  ├── /api/aliases       Container aliases        │
 │  ├── /api/projects/*    Compose stack actions    │
+│  ├── /api/compose/*     Current Compose files    │
 │  └── /api/templates/*   Template library/deploy  │
 │                                                   │
 │  Docker socket (/var/run/docker.sock, read-only)  │
@@ -113,6 +115,7 @@ services:
       - "8088:8088"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:rw
       - ./data:/app/data
       - tailscale_sock:/run/tailscale
       - /proc:/host/proc:ro
@@ -120,6 +123,7 @@ services:
     environment:
       - NODE_ENV=production
       - DOCKER_SOCKET=/var/run/docker.sock
+      - HOST_ROOT=/host
       - DB_PATH=/app/data/config.json
     restart: unless-stopped
     healthcheck:
@@ -200,12 +204,14 @@ dashgo/
 
 > **Note:** Access to the Docker socket grants root-level control over the host.
 > Always set a password and restrict network access (a tailnet-only deployment is ideal).
+> The Compose editor additionally requires `/:/host:rw` so it can update source Compose files.
 
 ## Environment Variables
 
 | Variable        | Default                      | Description              |
 |-----------------|------------------------------|--------------------------|
 | `DOCKER_SOCKET` | `/var/run/docker.sock`       | Docker socket path       |
+| `HOST_ROOT`     | `/host`                      | Mounted Docker host root |
 | `DB_PATH`       | `/app/data/config.json`      | Config file path         |
 | `PORT`          | `8088`                       | HTTP listen port         |
 | `TS_AUTHKEY`    | —                            | Tailscale auth key       |

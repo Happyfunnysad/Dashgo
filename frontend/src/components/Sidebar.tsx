@@ -1,7 +1,7 @@
 import React from 'react';
-import { IconDashboard, IconSettings, IconNetwork, IconLibrary } from './icons/Icons';
+import { IconCompose, IconDashboard, IconSettings, IconNetwork, IconLibrary } from './icons/Icons';
 
-export type AppTab = 'dashboard' | 'templates' | 'settings' | 'tailscale';
+export type AppTab = 'dashboard' | 'compose' | 'templates' | 'settings' | 'tailscale';
 
 interface SidebarProps {
   activeTab: AppTab;
@@ -38,6 +38,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onLogo
           >
             <IconDashboard className={`w-5 h-5 ${activeTab === 'dashboard' ? 'text-green-400' : ''}`} />
             Dashboard
+          </button>
+          <button
+            onClick={() => onTabChange('compose')}
+            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-3 ${
+              activeTab === 'compose'
+                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/50'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+            }`}
+          >
+            <IconCompose className={`w-5 h-5 ${activeTab === 'compose' ? 'text-green-400' : ''}`} />
+            Compose
           </button>
           <button
             onClick={() => onTabChange('templates')}
@@ -97,6 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onLogo
         <button type="button" onClick={() => onTabChange('dashboard')} className={mobileItemClass(activeTab === 'dashboard')}>
           <IconDashboard className="h-5 w-5" />
           <span className="truncate">Dashboard</span>
+        </button>
+        <button type="button" onClick={() => onTabChange('compose')} className={mobileItemClass(activeTab === 'compose')}>
+          <IconCompose className="h-5 w-5" />
+          <span className="truncate">Compose</span>
         </button>
         <button type="button" onClick={() => onTabChange('templates')} className={mobileItemClass(activeTab === 'templates')}>
           <IconLibrary className="h-5 w-5" />

@@ -6,6 +6,7 @@ import { TailscalePageWithIcons } from './pages/TailscalePageWithIcons';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingWizard } from './pages/OnboardingWizard';
 import { TemplatesPage } from './pages/Templates';
+import { ComposePage } from './pages/Compose';
 import { authApi } from './utils/api';
 import { authStorage } from './utils/authStorage';
 import type { AppTab } from './components/Sidebar';
@@ -97,6 +98,7 @@ function App() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
       <main className="flex min-w-0 flex-1 pb-16 md:pb-0">
         {activeTab === 'dashboard' && <DashboardPage />}
+        {activeTab === 'compose' && <ComposePage />}
         {activeTab === 'templates' && <TemplatesPage />}
         {activeTab === 'settings' && <SettingsPage />}
         {activeTab === 'tailscale' && <TailscalePageWithIcons />}

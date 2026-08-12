@@ -171,6 +171,29 @@ export interface TemplateItem {
   projectUrl?: string;
 }
 
+export interface ComposeFile {
+  index: number;
+  name: string;
+  path: string;
+  readable: boolean;
+  editable: boolean;
+  error?: string;
+}
+
+export interface ComposeProject {
+  name: string;
+  workingDir: string;
+  files: ComposeFile[];
+  containers: Array<{ name: string; state: string }>;
+  runningCount: number;
+}
+
+export interface ComposeDocument {
+  project: ComposeProject;
+  file: ComposeFile;
+  content: string;
+}
+
 export const containerApi = {
   getContainers: () => api.get<Container[]>('/containers'),
   getStats: () => api.get<Stats>('/stats'),
@@ -223,6 +246,14 @@ export const templateApi = {
     api.put('/templates/sources', { id, ...updates }),
   addSource: (name: string, url: string) => api.post<TemplateSource>('/templates/sources', { name, url }),
   deleteSource: (id: number) => api.delete('/templates/sources', { params: { id } }),
+};
+
+export const composeApi = {
+  getProjects: () => api.get<ComposeProject[]>('/compose'),
+  getFile: (projectName: string, fileIndex = 0) =>
+    api.get<ComposeDocument>(`/compose/${encodeURIComponent(projectName)}`, { params: { file: fileIndex } }),
+  saveFile: (projectName: string, fileIndex: number, content: string) =>
+    api.put<ComposeDocument>(`/compose/${encodeURIComponent(projectName)}`, { content }, { params: { file: fileIndex } }),
 };
 
 export default api;

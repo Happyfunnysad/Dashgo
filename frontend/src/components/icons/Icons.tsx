@@ -52,6 +52,13 @@ export const IconLibrary = ({ className = 'w-5 h-5' }) => (
   </svg>
 );
 
+export const IconCompose = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h7l4 4v14H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5M9 12l-2 2 2 2m5-4 2 2-2 2m-3-5-1 6" />
+  </svg>
+);
+
 export const IconActivity = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />

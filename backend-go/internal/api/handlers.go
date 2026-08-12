@@ -86,6 +86,11 @@ func RegisterRoutes(r *gin.Engine) {
 		api.POST("/projects/:name/stop", projectAction("stop"))
 		api.POST("/projects/:name/restart", projectAction("restart"))
 
+		// Compose files used by current containers
+		api.GET("/compose", getComposeProjects)
+		api.GET("/compose/:name", getComposeProjectFile)
+		api.PUT("/compose/:name", saveComposeProjectFile)
+
 		// Template library
 		api.GET("/templates", getTemplates)
 		api.POST("/templates/compose", generateTemplateCompose)
@@ -394,6 +399,53 @@ func projectAction(action string) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": action + "ed", "affected": affected})
 	}
+}
+
+// --- Compose Files ---
+
+func getComposeProjects(c *gin.Context) {
+	projects, err := docker.ListComposeProjects()
+	if err != nil {
+		log.Printf("[ERROR] getComposeProjects: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve Compose projects"})
+		return
+	}
+	c.JSON(http.StatusOK, projects)
+}
+
+func getComposeProjectFile(c *gin.Context) {
+	fileIndex, err := docker.ParseComposeFileIndex(c.Query("file"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	document, err := docker.ReadComposeProjectFile(c.Param("name"), fileIndex)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, document)
+}
+
+func saveComposeProjectFile(c *gin.Context) {
+	fileIndex, err := docker.ParseComposeFileIndex(c.Query("file"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	var request struct {
+		Content string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Compose content is required"})
+		return
+	}
+	document, err := docker.SaveComposeProjectFile(c.Param("name"), fileIndex, request.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, document)
 }
 
 // --- Template Library ---

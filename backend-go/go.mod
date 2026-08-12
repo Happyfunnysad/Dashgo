@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/gin-gonic/gin v1.10.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -58,6 +59,5 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

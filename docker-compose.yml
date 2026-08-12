@@ -7,6 +7,7 @@ services:
       - "8088:8088"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:rw
       - ./data:/app/data
       - tailscale_sock:/run/tailscale
       - /proc:/host/proc:ro
@@ -14,6 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       - DOCKER_SOCKET=/var/run/docker.sock
+      - HOST_ROOT=/host
       - DB_PATH=/app/data/config.json
     restart: unless-stopped
     healthcheck:

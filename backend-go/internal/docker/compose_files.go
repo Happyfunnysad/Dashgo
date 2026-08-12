@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -188,6 +189,155 @@ func SaveComposeProjectFile(projectName string, fileIndex int, content string) (
 	}
 
 	return ComposeDocument{Project: project, File: file, Content: content}, nil
+}
+
+// ApplyComposeProject recreates changed services using every Compose file
+// recorded for the current project.
+func ApplyComposeProject(projectName string) (string, error) {
+	if err := ensureClient(); err != nil {
+		return "", err
+	}
+	if !composeProjectName.MatchString(projectName) {
+		return "", fmt.Errorf("invalid Compose project name")
+	}
+
+	projects, err := ListComposeProjects()
+	if err != nil {
+		return "", err
+	}
+	var project *ComposeProjectInfo
+	for index := range projects {
+		if projects[index].Name == projectName {
+			project = &projects[index]
+			break
+		}
+	}
+	if project == nil {
+		return "", fmt.Errorf("compose project %q was not found", projectName)
+	}
+	if len(project.Files) == 0 {
+		return "", fmt.Errorf("compose files were not found for project %q", projectName)
+	}
+
+	paths := make([]string, 0, len(project.Files))
+	for _, file := range project.Files {
+		if _, resolveErr := resolveComposePath(file.Path); resolveErr != nil {
+			return "", resolveErr
+		}
+		if aliasErr := ensureHostPathAvailable(filepath.Dir(file.Path)); aliasErr != nil {
+			return "", aliasErr
+		}
+		paths = append(paths, filepath.Clean(file.Path))
+	}
+	workingDir := strings.TrimSpace(project.WorkingDir)
+	if workingDir == "" {
+		workingDir = filepath.Dir(paths[0])
+	}
+	if err := ensureHostPathAvailable(workingDir); err != nil {
+		return "", err
+	}
+
+	command, args, err := composeApplyCommand(paths, projectName, workingDir)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, command, args...)
+	cmd.Dir = workingDir
+	output, runErr := cmd.CombinedOutput()
+	message := strings.TrimSpace(string(output))
+	if len(message) > maxComposeOutput {
+		message = message[len(message)-maxComposeOutput:]
+	}
+	if ctx.Err() == context.DeadlineExceeded {
+		return message, fmt.Errorf("docker compose timed out after 15 minutes")
+	}
+	if runErr != nil {
+		if message == "" {
+			message = runErr.Error()
+		}
+		return message, fmt.Errorf("docker compose failed: %s", message)
+	}
+	return message, nil
+}
+
+func composeApplyCommand(paths []string, projectName, workingDir string) (string, []string, error) {
+	args := make([]string, 0, len(paths)*2+6)
+	for _, path := range paths {
+		args = append(args, "-f", path)
+	}
+	args = append(args, "--project-directory", workingDir, "-p", projectName, "up", "-d")
+
+	if binary, err := exec.LookPath("docker-compose"); err == nil {
+		return binary, args, nil
+	}
+	if binary, err := exec.LookPath("docker"); err == nil {
+		return binary, append([]string{"compose"}, args...), nil
+	}
+	return "", nil, fmt.Errorf("Docker Compose is not installed")
+}
+
+// ensureHostPathAvailable exposes a host directory at its original absolute
+// path inside Dashgo. Compose must see that original path so relative bind
+// mounts and build contexts keep pointing at the host, not at /host/....
+func ensureHostPathAvailable(hostPath string) error {
+	hostPath = filepath.Clean(hostPath)
+	if !filepath.IsAbs(hostPath) {
+		return fmt.Errorf("Compose working directory %q is not absolute", hostPath)
+	}
+	hostRoot := strings.TrimSpace(os.Getenv("HOST_ROOT"))
+	if hostRoot == "" {
+		if info, err := os.Stat(hostPath); err == nil && info.IsDir() {
+			return nil
+		}
+		return fmt.Errorf("HOST_ROOT is not configured")
+	}
+
+	mappedPath := filepath.Join(filepath.Clean(hostRoot), strings.TrimPrefix(hostPath, string(filepath.Separator)))
+	mappedInfo, mappedErr := os.Stat(mappedPath)
+	if mappedErr != nil || !mappedInfo.IsDir() {
+		if info, err := os.Stat(hostPath); err == nil && info.IsDir() {
+			return nil
+		}
+		return fmt.Errorf("host directory %q is not available inside Dashgo", hostPath)
+	}
+
+	if originalInfo, err := os.Stat(hostPath); err == nil {
+		if originalInfo.IsDir() && os.SameFile(originalInfo, mappedInfo) {
+			return nil
+		}
+		return fmt.Errorf("cannot expose host directory %q because that path is already used inside Dashgo", hostPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("check Compose working directory: %w", err)
+	}
+
+	aliasPath := hostPath
+	for {
+		parent := filepath.Dir(aliasPath)
+		if parent == aliasPath {
+			return fmt.Errorf("cannot expose host directory %q", hostPath)
+		}
+		if _, err := os.Lstat(parent); err == nil {
+			break
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("check Compose path parent: %w", err)
+		}
+		aliasPath = parent
+	}
+
+	aliasTarget := filepath.Join(filepath.Clean(hostRoot), strings.TrimPrefix(aliasPath, string(filepath.Separator)))
+	if info, err := os.Stat(aliasTarget); err != nil || !info.IsDir() {
+		return fmt.Errorf("host directory %q is not available inside Dashgo", aliasPath)
+	}
+	if err := os.Symlink(aliasTarget, aliasPath); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("expose host directory %q: %w", aliasPath, err)
+	}
+	if info, err := os.Stat(hostPath); err != nil || !info.IsDir() {
+		return fmt.Errorf("failed to expose host directory %q", hostPath)
+	}
+	return nil
 }
 
 func findComposeProjectFile(projectName string, fileIndex int) (ComposeProjectInfo, ComposeFileInfo, string, error) {

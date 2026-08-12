@@ -18,6 +18,7 @@ export const ComposePage: React.FC = () => {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingFile, setLoadingFile] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState<Notice>(null);
 
@@ -129,19 +130,29 @@ export const ComposePage: React.FC = () => {
     loadFile(selectedName, fileIndex);
   };
 
-  const saveFile = async () => {
-    if (!selectedProject || !selectedFile?.editable || !dirty || saving) return;
+  const saveFile = async (apply = false) => {
+    if (!selectedProject || !selectedFile?.editable || saving || applying || (!dirty && !apply)) return;
+    if (apply && !window.confirm(`Save and recreate the “${selectedProject.name}” project?`)) return;
     setSaving(true);
+    if (apply) setApplying(true);
     try {
-      const response = await composeApi.saveFile(selectedProject.name, selectedFile.index, content);
-      setContent(response.data.content);
-      setSavedContent(response.data.content);
-      setNotice({ kind: 'success', text: `${selectedFile.name} saved` });
+      if (dirty) {
+        const response = await composeApi.saveFile(selectedProject.name, selectedFile.index, content);
+        setContent(response.data.content);
+        setSavedContent(response.data.content);
+      }
+      if (apply) {
+        await composeApi.applyProject(selectedProject.name);
+        setNotice({ kind: 'success', text: `${selectedProject.name} saved and applied` });
+      } else {
+        setNotice({ kind: 'success', text: `${selectedFile.name} saved` });
+      }
       await loadProjects();
     } catch (error) {
-      setNotice({ kind: 'error', text: errorMessage(error, 'Failed to save Compose file') });
+      setNotice({ kind: 'error', text: errorMessage(error, apply ? 'Failed to apply Compose project' : 'Failed to save Compose file') });
     } finally {
       setSaving(false);
+      setApplying(false);
     }
   };
 
@@ -149,7 +160,7 @@ export const ComposePage: React.FC = () => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
-        saveFile();
+        saveFile(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -217,9 +228,13 @@ export const ComposePage: React.FC = () => {
                     </select>
                   )}
                   <button type="button" onClick={reloadFile} disabled={loadingFile} className="h-8 rounded-lg border border-slate-700 bg-slate-800 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-50">Reload</button>
-                  <button type="button" onClick={saveFile} disabled={!dirty || !selectedFile?.editable || saving || loadingFile} className="flex h-8 items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/15 px-3 text-xs font-semibold text-green-400 hover:bg-green-500/25 disabled:cursor-not-allowed disabled:opacity-40">
-                    {saving && <Spinner className="h-3.5 w-3.5" />}
-                    {saving ? 'Saving...' : 'Save'}
+                  <button type="button" onClick={() => saveFile(false)} disabled={!dirty || !selectedFile?.editable || saving || loadingFile} className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+                    {saving && !applying && <Spinner className="h-3.5 w-3.5" />}
+                    {saving && !applying ? 'Saving...' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => saveFile(true)} disabled={!selectedFile?.editable || saving || loadingFile} className="flex h-8 items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/15 px-3 text-xs font-semibold text-green-400 hover:bg-green-500/25 disabled:cursor-not-allowed disabled:opacity-40">
+                    {applying && <Spinner className="h-3.5 w-3.5" />}
+                    {applying ? 'Applying...' : 'Save & Apply'}
                   </button>
                 </div>
               </div>
@@ -231,7 +246,7 @@ export const ComposePage: React.FC = () => {
               ) : (
                 <>
                   <textarea aria-label="Compose YAML" value={content} onChange={(event) => setContent(event.target.value)} readOnly={!selectedFile?.editable} spellCheck={false} className="min-h-0 flex-1 resize-none bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-300 outline-none read-only:cursor-not-allowed read-only:opacity-70" />
-                  <div className="shrink-0 border-t border-slate-700/60 px-4 py-2 text-[10px] text-slate-500">{selectedFile.editable ? 'Saving changes updates the source file only. Recreate the project to apply them.' : 'This source Compose file is mounted read-only.'}</div>
+                  <div className="shrink-0 border-t border-slate-700/60 px-4 py-2 text-[10px] text-slate-500">{selectedFile.editable ? 'Save keeps containers unchanged. Save & Apply recreates changed services.' : 'This source Compose file is mounted read-only.'}</div>
                 </>
               )}
             </>

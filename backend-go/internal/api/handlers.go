@@ -90,6 +90,7 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/compose", getComposeProjects)
 		api.GET("/compose/:name", getComposeProjectFile)
 		api.PUT("/compose/:name", saveComposeProjectFile)
+		api.POST("/compose/:name/apply", applyComposeProject)
 
 		// Template library
 		api.GET("/templates", getTemplates)
@@ -446,6 +447,16 @@ func saveComposeProjectFile(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, document)
+}
+
+func applyComposeProject(c *gin.Context) {
+	output, err := docker.ApplyComposeProject(c.Param("name"))
+	if err != nil {
+		log.Printf("[ERROR] applyComposeProject name=%s: %v", c.Param("name"), err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "output": output})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "output": output})
 }
 
 // --- Template Library ---

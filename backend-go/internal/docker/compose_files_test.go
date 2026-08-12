@@ -77,3 +77,19 @@ func TestReplaceComposeFile(t *testing.T) {
 		t.Fatalf("permissions = %o, want 640", info.Mode().Perm())
 	}
 }
+
+func TestComposeApplyCommand(t *testing.T) {
+	command, args, err := composeApplyCommand([]string{"/srv/app/compose.yaml", "/srv/app/override.yml"}, "sample", "/srv/app")
+	if err != nil {
+		t.Skipf("Docker Compose is not installed in test environment: %v", err)
+	}
+	if command == "" {
+		t.Fatal("composeApplyCommand returned an empty command")
+	}
+	joined := strings.Join(args, " ")
+	for _, expected := range []string{"-f /srv/app/compose.yaml", "-f /srv/app/override.yml", "--project-directory /srv/app", "-p sample up -d"} {
+		if !strings.Contains(joined, expected) {
+			t.Fatalf("compose args %q do not contain %q", joined, expected)
+		}
+	}
+}

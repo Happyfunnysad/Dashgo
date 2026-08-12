@@ -8,6 +8,7 @@ vi.mock('../../utils/api', () => ({
     getProjects: vi.fn(),
     getFile: vi.fn(),
     saveFile: vi.fn(),
+    applyProject: vi.fn(),
   },
 }));
 
@@ -31,6 +32,7 @@ describe('ComposePage', () => {
     (composeApi.saveFile as any).mockImplementation((_name: string, _index: number, content: string) => Promise.resolve({
       data: { project, file: project.files[0], content },
     }));
+    (composeApi.applyProject as any).mockResolvedValue({ data: { success: true, output: '' } });
   });
 
   it('loads and saves the Compose file used by a current container', async () => {
@@ -46,6 +48,20 @@ describe('ComposePage', () => {
 
     await waitFor(() => expect(composeApi.saveFile).toHaveBeenCalledWith('sample', 0, updatedContent));
     expect(await screen.findByText('compose.yaml saved')).toBeInTheDocument();
+  });
+
+  it('saves and applies changes to the current Compose project', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<ComposePage />);
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Compose YAML' })).toHaveValue(originalContent));
+    const updatedContent = originalContent.replace('nginx:latest', 'nginx:alpine');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Compose YAML' }), { target: { value: updatedContent } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save & Apply' }));
+
+    await waitFor(() => expect(composeApi.saveFile).toHaveBeenCalledWith('sample', 0, updatedContent));
+    expect(composeApi.applyProject).toHaveBeenCalledWith('sample');
+    expect(await screen.findByText('sample saved and applied')).toBeInTheDocument();
   });
 
   it('explains when a current project has no accessible Compose file', async () => {

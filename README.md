@@ -54,7 +54,7 @@ the API stays locked.
 - **Onboarding Wizard** — guided first-time setup for password, Tailscale auth, and network settings
 - **Dashboard** — real-time container monitoring with host metrics (CPU, RAM, disk, temperature)
 - **Compose stacks** — containers grouped by project; start/stop/restart an entire stack at once
-- **Compose editor** — open and edit the source Compose file used by current containers
+- **Compose editor** — open, edit, and apply the source Compose file used by current containers
 - **Template library** — browse catalogs, manage sources, edit generated Compose, and deploy
 - **Details drawer** — click any container for ports, resource usage, live logs, inspect, and access links
 - **Native Tailnet** — built-in Tailscale: device picker, online status, MagicDNS, and services published over your tailnet

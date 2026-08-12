@@ -254,6 +254,8 @@ export const composeApi = {
     api.get<ComposeDocument>(`/compose/${encodeURIComponent(projectName)}`, { params: { file: fileIndex } }),
   saveFile: (projectName: string, fileIndex: number, content: string) =>
     api.put<ComposeDocument>(`/compose/${encodeURIComponent(projectName)}`, { content }, { params: { file: fileIndex } }),
+  applyProject: (projectName: string) =>
+    api.post<{ success: boolean; output: string }>(`/compose/${encodeURIComponent(projectName)}/apply`, undefined, { timeout: 15 * 60 * 1000 }),
 };
 
 export default api;
